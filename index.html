@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Leaflet + Turf Union Polygon & Circle + Mouse JSON</title>
+<title>Leaflet + Turf Click Polygon JSON</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
   #map { height: 100vh; width: 100%; }
-  #coords {
+  #coords, #polygon-json {
     position: absolute;
-    top: 10px;
     left: 10px;
     z-index: 1000;
     background: white;
@@ -17,11 +16,14 @@
     border-radius: 4px;
     font-family: monospace;
   }
+  #coords { top: 10px; }
+  #polygon-json { top: 40px; max-width: 400px; word-break: break-all; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div id="coords">[lng, lat]</div>
+<div id="polygon-json">[]</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
@@ -30,39 +32,32 @@
 const map = L.map('map').setView([48.505, 7.57], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-// Polygon coordinates (lng, lat)
-const polygon = turf.polygon([[
-  [7.49944444444444,48.6908333333333],
-  [7.47,48.3613888888889],
-  [7.37805555555556,48.3638888888889],
-  [7.49944444444444,48.6908333333333]
-]], { fill: "#0f0" });
-
-// Circle with center, radius in nautical miles
-const circle = turf.circle([7.57194444444444,48.5052777777778], 11.5, { steps: 128, units: 'nauticalmiles', properties: { fill: "#00f" } });
-
-// Union polygon + circle
-const union = turf.union(turf.featureCollection([polygon, circle]));
-
-// Draw original shapes (optional)
-L.geoJSON(polygon, { style: { color: "#0f0", fillOpacity: 0.3 } }).addTo(map);
-L.geoJSON(circle, { style: { color: "#00f", fillOpacity: 0.3 } }).addTo(map);
-
-// Draw the union
-L.geoJSON(union, { style: { color: "red", fillOpacity: 0.5, weight: 3 } }).addTo(map);
-
-// Zoom to fit union
-map.fitBounds(L.geoJSON(union).getBounds());
-
-// Show JSON coordinates of mouse pointer
+// Live mouse coordinates
 const coordsDiv = document.getElementById('coords');
-map.on('mousemove', function(e) {
+map.on('mousemove', e => {
   const lng = e.latlng.lng.toFixed(6);
   const lat = e.latlng.lat.toFixed(6);
   coordsDiv.textContent = JSON.stringify([lng, lat]);
 });
-map.on('mouseout', function() {
-  coordsDiv.textContent = '[lng, lat]';
+map.on('mouseout', () => { coordsDiv.textContent = '[lng, lat]'; });
+
+// Polygon click collection
+const polygonDiv = document.getElementById('polygon-json');
+let clickPoints = [];
+let leafletPolygon = null;
+
+map.on('click', e => {
+  // Add clicked point to array
+  clickPoints.push([e.latlng.lng, e.latlng.lat]);
+  
+  // Update drawn polygon
+  if (leafletPolygon) map.removeLayer(leafletPolygon);
+  if (clickPoints.length > 1) {
+    leafletPolygon = L.polygon(clickPoints, { color: 'orange', fillOpacity: 0.3 }).addTo(map);
+  }
+  
+  // Update JSON array display
+  polygonDiv.textContent = JSON.stringify(clickPoints);
 });
 </script>
 </body>
