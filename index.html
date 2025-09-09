@@ -2,13 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Leaflet + Turf Union Polygon & Circle</title>
+<title>Leaflet + Turf Union Polygon & Circle + Mouse JSON</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<style>#map { height: 100vh; width: 100%; }</style>
+<style>
+  #map { height: 100vh; width: 100%; }
+  #coords {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-family: monospace;
+  }
+</style>
 </head>
 <body>
 <div id="map"></div>
+<div id="coords">[lng, lat]</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
@@ -31,11 +44,26 @@ const circle = turf.circle([7.57194444444444,48.5052777777778], 11.5, { steps: 1
 // Union polygon + circle
 const union = turf.union(turf.featureCollection([polygon, circle]));
 
+// Draw original shapes (optional)
+L.geoJSON(polygon, { style: { color: "#0f0", fillOpacity: 0.3 } }).addTo(map);
+L.geoJSON(circle, { style: { color: "#00f", fillOpacity: 0.3 } }).addTo(map);
+
 // Draw the union
 L.geoJSON(union, { style: { color: "red", fillOpacity: 0.5, weight: 3 } }).addTo(map);
 
 // Zoom to fit union
 map.fitBounds(L.geoJSON(union).getBounds());
+
+// Show JSON coordinates of mouse pointer
+const coordsDiv = document.getElementById('coords');
+map.on('mousemove', function(e) {
+  const lng = e.latlng.lng.toFixed(6);
+  const lat = e.latlng.lat.toFixed(6);
+  coordsDiv.textContent = JSON.stringify([lng, lat]);
+});
+map.on('mouseout', function() {
+  coordsDiv.textContent = '[lng, lat]';
+});
 </script>
 </body>
 </html>
