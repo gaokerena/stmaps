@@ -34,7 +34,7 @@ const poly2 = turf.polygon([[
 ]], { fill: "#00f" });
 
 // Union using Turf
-const union = turf.union(poly1, poly2);
+const union = turf.union(turf.featureCollection([poly1, poly2]));
 
 // Draw polygons
 L.geoJSON(union, { style: { color: 'red', fillOpacity: 0.3, weight: 3 } }).addTo(map);
