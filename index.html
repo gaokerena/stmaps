@@ -31,14 +31,18 @@
 const map = L.map('map').setView([48.505, 7.57], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
+// ---------------------
 // Live mouse coordinates
+// ---------------------
 const coordsDiv = document.getElementById('coords');
 map.on('mousemove', e => {
   coordsDiv.textContent = JSON.stringify([e.latlng.lng.toFixed(6), e.latlng.lat.toFixed(6)]);
 });
 map.on('mouseout', () => { coordsDiv.textContent = '[lng, lat]'; });
 
+// ---------------------
 // Click-to-build polygon
+// ---------------------
 const polygonDiv = document.getElementById('polygon-json');
 let clickPoints = [];
 let leafletPolygon = null;
@@ -52,14 +56,39 @@ map.on('click', e => {
 });
 
 // ---------------------
-// Fetch Sheet JSON and create layers
+// Parse polygons / circles from Sheet JSON
 // ---------------------
-const sheetURL = "https://script.google.com/macros/s/AKfycbx9f7ijun4hKwNw0q1246RRh-QmFPui4eT8h_s2Zgx_gzYDWmeiDBLQlzdKVUyEy61a-Q/exec"; // replace with your Apps Script URL
+function parseShape(json) {
+  if (!json) return null;
+  let obj;
+  try { obj = JSON.parse(json); }
+  catch(e) { console.error("Invalid JSON:", json, e); return null; }
+
+  // Circle detection
+  if (obj.center && obj.radius) {
+    const opts = obj.options || { steps: 64, units: 'kilometers' };
+    return turf.circle(obj.center, obj.radius, opts);
+  }
+
+  // Polygon detection
+  if (Array.isArray(obj) && obj.length && Array.isArray(obj[0])) {
+    if (Array.isArray(obj[0][0])) return turf.polygon(obj); // already wrapped
+    else return turf.polygon([obj]); // wrap single ring
+  }
+
+  console.warn("Unknown geometry type:", obj);
+  return null;
+}
+
+// ---------------------
+// Fetch Sheet JSON and create Leaflet layers
+// ---------------------
+const sheetURL = "https://script.google.com/macros/s/AKfycbx9f7ijun4hKwNw0q1246RRh-QmFPui4eT8h_s2Zgx_gzYDWmeiDBLQlzdKVUyEy61a-Q/exec"; // replace with your deployed Apps Script URL
 
 fetch(sheetURL)
   .then(res => res.json())
   .then(data => {
-    const categories = {}; // Leaflet LayerGroups per Catégorie
+    const categories = {}; // Leaflet LayerGroups by Catégorie
 
     data.forEach(row => {
       let combined = null;
@@ -67,26 +96,26 @@ fetch(sheetURL)
       const inters = ['Intersection pour réduction P1','Intersection pour réduction P2','Intersection pour réduction P3','Intersection pour réduction P4'];
 
       for (let i = 0; i < polys.length; i++) {
-        const polyJSON = row[polys[i]];
-        const interJSON = row[inters[i]];
+        const polyShape = parseShape(row[polys[i]]);
+        if (!polyShape) continue;
 
-        if (!polyJSON) continue;
-        let poly = JSON.parse(polyJSON);
+        let finalShape = polyShape;
 
-        if (interJSON) {
-          const inter = JSON.parse(interJSON);
-          const intersected = turf.intersect(poly, inter);
-          if (!intersected) continue;
-          poly = intersected;
+        if (row[inters[i]]) {
+          const interShape = parseShape(row[inters[i]]);
+          if (interShape) {
+            const intersected = turf.intersect(polyShape, interShape);
+            if (!intersected) continue;
+            finalShape = intersected;
+          }
         }
 
-        if (!combined) combined = poly;
-        else combined = turf.union(combined, poly);
+        if (!combined) combined = finalShape;
+        else combined = turf.union(combined, finalShape);
       }
 
-      if (!combined) return; // skip if no geometry
+      if (!combined) return; // skip if no valid geometry
 
-      // Leaflet layer
       const leafletLayer = L.geoJSON(combined, {
         style: { color: "#00f", fillOpacity: 0.5 },
         onEachFeature: (feature, layer) => {
@@ -94,13 +123,12 @@ fetch(sheetURL)
         }
       });
 
-      // Create or add to category group
       const cat = row.Catégorie || "Default";
       if (!categories[cat]) categories[cat] = L.layerGroup().addTo(map);
       leafletLayer.addTo(categories[cat]);
     });
 
-    // Optional: add layer control
+    // Layer control
     L.control.layers(null, categories, { collapsed: false }).addTo(map);
   })
   .catch(err => console.error(err));
