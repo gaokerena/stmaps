@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Leaflet + Turf Union Test</title>
+  <title>Leaflet + Turf Squares Union</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
@@ -23,16 +23,8 @@
       maxZoom: 19
     }).addTo(map);
 
-    // 🔹 Leaflet polygon (just for reference)
-    const leafletPolygon = L.polygon([
-      [48.85, 2.34],
-      [48.85, 2.38],
-      [48.88, 2.38],
-      [48.88, 2.34]
-    ], { color: 'purple', fillOpacity: 0.3 }).addTo(map);
-
-    // 🔹 Turf polygon (lng,lat order)
-    const turfPolygon = turf.polygon([[
+    // 🔹 First square (Turf polygon) - lng,lat order
+    const square1 = turf.polygon([[
       [2.34, 48.85],
       [2.38, 48.85],
       [2.38, 48.88],
@@ -40,30 +32,33 @@
       [2.34, 48.85]
     ]]);
 
-    // 🔹 Turf circle (polygon approximation) inside the polygon
-    const turfCircle = turf.circle([2.355, 48.855], 1, { steps: 128, units: 'kilometers' });
+    // 🔹 Second square overlapping the first
+    const square2 = turf.polygon([[
+      [2.36, 48.855],
+      [2.40, 48.855],
+      [2.40, 48.885],
+      [2.36, 48.885],
+      [2.36, 48.855]
+    ]]);
 
-    // 🔹 Union of polygon + circle
+    // 🔹 Compute union safely
     let union = null;
     try {
-      union = turf.union(turfPolygon, turfCircle);
+      union = turf.union(square1, square2);
     } catch (e) {
       console.error("Union failed:", e);
     }
 
-    // Draw layers
-    L.geoJSON(turfPolygon, { style: { color: 'red', fillOpacity: 0.3 } }).addTo(map);
-    L.geoJSON(turfCircle, { style: { color: 'blue', fillOpacity: 0.3 } }).addTo(map);
+    // Draw squares
+    L.geoJSON(square1, { style: { color: 'red', fillOpacity: 0.3 } }).addTo(map);
+    L.geoJSON(square2, { style: { color: 'blue', fillOpacity: 0.3 } }).addTo(map);
 
+    // Draw union if successful
     if (union) {
       L.geoJSON(union, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
-    }
-
-    // Fit map to union if exists, else polygon
-    if (union) {
       map.fitBounds(L.geoJSON(union).getBounds());
     } else {
-      map.fitBounds(leafletPolygon.getBounds());
+      map.fitBounds(L.geoJSON(square1).getBounds());
     }
   </script>
 </body>
