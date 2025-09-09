@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Leaflet + Turf Union Paris</title>
+<title>Leaflet + Turf Union Polygon & Circle</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>#map { height: 100vh; width: 100%; }</style>
@@ -13,36 +13,32 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 <script>
-const map = L.map('map').setView([48.8566, 2.3522], 12);
+// Initialize Leaflet map
+const map = L.map('map').setView([48.505, 7.57], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-// Two overlapping squares in Paris coordinates
-const poly1 = turf.polygon([[
-  [2.34, 48.85],
-  [2.34, 48.88],
-  [2.38, 48.88],
-  [2.38, 48.85],
-  [2.34, 48.85]
+// Polygon coordinates (lng, lat)
+const polygon = turf.polygon([[
+  [7.49944444444444,48.6908333333333],
+  [7.47,48.3613888888889],
+  [7.37805555555556,48.3638888888889],
+  [7.49944444444444,48.6908333333333]
 ]], { fill: "#0f0" });
 
-const poly2 = turf.polygon([[
-  [2.36, 48.855],
-  [2.36, 48.885],
-  [2.40, 48.885],
-  [2.40, 48.855],
-  [2.36, 48.855]
-]], { fill: "#00f" });
+// Circle with center, radius in nautical miles
+const circle = turf.circle([7.57194444444444,48.5052777777778], 11.5, { steps: 128, units: 'nauticalmiles', properties: { fill: "#00f" } });
 
-  // Circle converted to polygon
-const poly3 = turf.circle([2.34, 48.88], 100, { steps: 64, units: 'meters' });
+// Union polygon + circle
+const union = turf.union(turf.featureCollection([polygon, circle]));
 
-// Union using Turf
-const union = turf.union(turf.featureCollection([poly1, poly2, poly3]));
+// Draw original shapes (optional)
+L.geoJSON(polygon, { style: { color: "#0f0", fillOpacity: 0.3 } }).addTo(map);
+L.geoJSON(circle, { style: { color: "#00f", fillOpacity: 0.3 } }).addTo(map);
 
-// Draw polygons
-L.geoJSON(union, { style: { color: 'red', fillOpacity: 0.3, weight: 3 } }).addTo(map);
+// Draw the union
+L.geoJSON(union, { style: { color: "red", fillOpacity: 0.5, weight: 3 } }).addTo(map);
 
-// Fit map to union
+// Zoom to fit union
 map.fitBounds(L.geoJSON(union).getBounds());
 </script>
 </body>
