@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Leaflet + Turf Example</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Turf JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+
+  <script>
+    // Init map
+    const map = L.map('map').setView([48.8566, 2.3522], 12); // Paris
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    // Example polygon (square)
+    const polygon = turf.polygon([[
+      [2.34, 48.85],
+      [2.38, 48.85],
+      [2.38, 48.88],
+      [2.34, 48.88],
+      [2.34, 48.85]
+    ]]);
+
+    // Example circle (approx as polygon, radius in km)
+    const circle = turf.circle([2.36, 48.86], 1, { steps: 64, units: 'kilometers' });
+
+    // Union
+    const union = turf.union(polygon, circle);
+
+    // Draw original shapes
+    L.geoJSON(polygon, { style: { color: "red" } }).addTo(map);
+    L.geoJSON(circle, { style: { color: "blue" } }).addTo(map);
+
+    // Draw union
+    L.geoJSON(union, { style: { color: "green", fillOpacity: 0.5 } }).addTo(map);
+  </script>
+</body>
+</html>
