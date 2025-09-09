@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Leaflet + Turf Union Squares</title>
+  <title>Leaflet + Turf Combine</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>#map { height: 100vh; width: 100%; }</style>
@@ -17,7 +17,6 @@
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-  // Two overlapping squares as Features
   const square1 = turf.polygon([[
     [2.34, 48.85],
     [2.38, 48.85],
@@ -34,25 +33,13 @@
     [2.36, 48.855]
   ]], { name: "square2" });
 
-  // Compute union
-  let union = null;
-  try {
-    union = turf.union(square1, square2);
-  } catch(e) {
-    console.error("Union failed:", e);
-  }
+  // Safe combine instead of union
+  const combined = turf.featureCollection([square1, square2]);
 
-  // Draw squares
-  L.geoJSON(square1, { style: { color: 'red', fillOpacity: 0.3 } }).addTo(map);
-  L.geoJSON(square2, { style: { color: 'blue', fillOpacity: 0.3 } }).addTo(map);
+  L.geoJSON(combined, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
 
-  // Draw union
-  if(union) {
-    L.geoJSON(union, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
-    map.fitBounds(L.geoJSON(union).getBounds());
-  } else {
-    map.fitBounds(L.geoJSON(square1).getBounds());
-  }
+  // Fit map to combined bounds
+  map.fitBounds(L.geoJSON(combined).getBounds());
 </script>
 </body>
 </html>
