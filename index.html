@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Leaflet + Turf Click Polygon JSON</title>
+<title>Leaflet + Turf Union Polygon & Circle + Click Polygon JSON</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
@@ -32,7 +32,33 @@
 const map = L.map('map').setView([48.505, 7.57], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-// Live mouse coordinates
+// ---------------------
+// Original Polygon + Circle + Union
+// ---------------------
+const polygon = turf.polygon([[
+  [7.49944444444444,48.6908333333333],
+  [7.47,48.3613888888889],
+  [7.37805555555556,48.3638888888889],
+  [7.49944444444444,48.6908333333333]
+]], { fill: "#0f0" });
+
+const circle = turf.circle([7.57194444444444,48.5052777777778], 11.5, { steps: 128, units: 'nauticalmiles', properties: { fill: "#00f" } });
+
+const union = turf.union(turf.featureCollection([polygon, circle]));
+
+// Draw original shapes
+L.geoJSON(polygon, { style: { color: "#0f0", fillOpacity: 0.3 } }).addTo(map);
+L.geoJSON(circle, { style: { color: "#00f", fillOpacity: 0.3 } }).addTo(map);
+
+// Draw the union
+L.geoJSON(union, { style: { color: "red", fillOpacity: 0.5, weight: 3 } }).addTo(map);
+
+// Zoom to fit union
+map.fitBounds(L.geoJSON(union).getBounds());
+
+// ---------------------
+// Live Mouse Coordinates
+// ---------------------
 const coordsDiv = document.getElementById('coords');
 map.on('mousemove', e => {
   const lng = e.latlng.lng.toFixed(6);
@@ -41,22 +67,24 @@ map.on('mousemove', e => {
 });
 map.on('mouseout', () => { coordsDiv.textContent = '[lng, lat]'; });
 
-// Polygon click collection
+// ---------------------
+// Click-to-build Polygon with JSON output
+// ---------------------
 const polygonDiv = document.getElementById('polygon-json');
 let clickPoints = [];
 let leafletPolygon = null;
 
 map.on('click', e => {
-  // Add clicked point to array
+  // Add point to array
   clickPoints.push([e.latlng.lng, e.latlng.lat]);
-  
+
   // Update drawn polygon
   if (leafletPolygon) map.removeLayer(leafletPolygon);
   if (clickPoints.length > 1) {
     leafletPolygon = L.polygon(clickPoints, { color: 'orange', fillOpacity: 0.3 }).addTo(map);
   }
-  
-  // Update JSON array display
+
+  // Update JSON display
   polygonDiv.textContent = JSON.stringify(clickPoints);
 });
 </script>
