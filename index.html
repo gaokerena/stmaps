@@ -2,64 +2,57 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Leaflet + Turf Squares Union</title>
+  <title>Leaflet + Turf Union Squares</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    #map { height: 100vh; width: 100%; }
-  </style>
+  <style>#map { height: 100vh; width: 100%; }</style>
 </head>
 <body>
-  <div id="map"></div>
+<div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+<script>
+  const map = L.map('map').setView([48.8566, 2.3522], 12);
 
-  <script>
-    // Initialize map
-    const map = L.map('map').setView([48.8566, 2.3522], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
+  // Two overlapping squares as Features
+  const square1 = turf.polygon([[
+    [2.34, 48.85],
+    [2.38, 48.85],
+    [2.38, 48.88],
+    [2.34, 48.88],
+    [2.34, 48.85]
+  ]], { name: "square1" });
 
-    // 🔹 First square (Turf polygon) - lng,lat order
-    const square1 = turf.polygon([[
-      [2.34, 48.85],
-      [2.38, 48.85],
-      [2.38, 48.88],
-      [2.34, 48.88],
-      [2.34, 48.85]
-    ]]);
+  const square2 = turf.polygon([[
+    [2.36, 48.855],
+    [2.40, 48.855],
+    [2.40, 48.885],
+    [2.36, 48.885],
+    [2.36, 48.855]
+  ]], { name: "square2" });
 
-    // 🔹 Second square overlapping the first
-    const square2 = turf.polygon([[
-      [2.36, 48.855],
-      [2.40, 48.855],
-      [2.40, 48.885],
-      [2.36, 48.885],
-      [2.36, 48.855]
-    ]]);
+  // Compute union
+  let union = null;
+  try {
+    union = turf.union(square1, square2);
+  } catch(e) {
+    console.error("Union failed:", e);
+  }
 
-    // 🔹 Compute union safely
-    let union = null;
-    try {
-      union = turf.union(square1, square2);
-    } catch (e) {
-      console.error("Union failed:", e);
-    }
+  // Draw squares
+  L.geoJSON(square1, { style: { color: 'red', fillOpacity: 0.3 } }).addTo(map);
+  L.geoJSON(square2, { style: { color: 'blue', fillOpacity: 0.3 } }).addTo(map);
 
-    // Draw squares
-    L.geoJSON(square1, { style: { color: 'red', fillOpacity: 0.3 } }).addTo(map);
-    L.geoJSON(square2, { style: { color: 'blue', fillOpacity: 0.3 } }).addTo(map);
-
-    // Draw union if successful
-    if (union) {
-      L.geoJSON(union, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
-      map.fitBounds(L.geoJSON(union).getBounds());
-    } else {
-      map.fitBounds(L.geoJSON(square1).getBounds());
-    }
-  </script>
+  // Draw union
+  if(union) {
+    L.geoJSON(union, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
+    map.fitBounds(L.geoJSON(union).getBounds());
+  } else {
+    map.fitBounds(L.geoJSON(square1).getBounds());
+  }
+</script>
 </body>
 </html>
