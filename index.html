@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Leaflet + Turf Polygon Test</title>
+  <title>Leaflet Polygon + Circle</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     #map { height: 100vh; width: 100%; }
@@ -13,58 +12,34 @@
 <body>
   <div id="map"></div>
 
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <!-- Turf JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 
   <script>
-    // Init map centered on Paris
+    // Initialize map
     const map = L.map('map').setView([48.8566, 2.3522], 12);
 
-    // Basemap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19
     }).addTo(map);
 
-    // 🔹 1. Simple Leaflet polygon (lat,lng order!)
-    const leafletPolygon = L.polygon([
+    // 🔹 Purple Leaflet polygon (square)
+    const square = L.polygon([
       [48.85, 2.34],
       [48.85, 2.38],
       [48.88, 2.38],
       [48.88, 2.34]
-    ], { color: 'purple' }).addTo(map);
+    ], { color: 'purple', fillOpacity: 0.3 }).addTo(map);
 
-    // 🔹 2. Turf polygon (GeoJSON uses lng,lat order!)
-    const turfPolygon = turf.polygon([[
-      [2.34, 48.85],
-      [2.38, 48.85],
-      [2.38, 48.88],
-      [2.34, 48.88],
-      [2.34, 48.85]
-    ]]);
+    // 🔹 Circle inside the square (adjusted center to fit)
+    const circle = L.circle([48.855, 2.355], {  // lower and left of polygon center
+      radius: 1000, // in meters
+      color: 'purple',
+      fillOpacity: 0.3
+    }).addTo(map);
 
-    // 🔹 3. Turf circle (polygon approximation, radius in km)
-    const turfCircle = turf.circle([2.36, 48.86], 1, { steps: 64, units: 'kilometers' });
-
-    // 🔹 4. Try union safely
-    let union = null;
-    try {
-      union = turf.union(turfPolygon, turfCircle);
-    } catch (e) {
-      console.error("Union failed:", e);
-    }
-
-    // Draw Turf layers
-    L.geoJSON(turfPolygon, { style: { color: "red" } }).addTo(map);
-    L.geoJSON(turfCircle, { style: { color: "blue" } }).addTo(map);
-
-    if (union) {
-      L.geoJSON(union, { style: { color: "green", fillOpacity: 0.5 } }).addTo(map);
-    }
-
-    // Zoom to fit everything
-    map.fitBounds(leafletPolygon.getBounds());
+    // Zoom to fit both shapes
+    const group = L.featureGroup([square, circle]);
+    map.fitBounds(group.getBounds());
   </script>
 </body>
 </html>
