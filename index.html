@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Leaflet + Turf Combine</title>
+  <title>Leaflet + Turf True Union</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>#map { height: 100vh; width: 100%; }</style>
@@ -14,32 +14,40 @@
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
 <script>
   const map = L.map('map').setView([48.8566, 2.3522], 12);
-
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
+  // Two overlapping squares (Turf Features)
   const square1 = turf.polygon([[
-    [2.34, 48.85],
-    [2.38, 48.85],
-    [2.38, 48.88],
-    [2.34, 48.88],
-    [2.34, 48.85]
-  ]], { name: "square1" });
+    [2.3401, 48.8501],
+    [2.3799, 48.8501],
+    [2.3799, 48.8799],
+    [2.3401, 48.8799],
+    [2.3401, 48.8501]
+  ]]);
 
   const square2 = turf.polygon([[
     [2.36, 48.855],
-    [2.40, 48.855],
-    [2.40, 48.885],
-    [2.36, 48.885],
+    [2.3999, 48.855],
+    [2.3999, 48.8849],
+    [2.36, 48.8849],
     [2.36, 48.855]
-  ]], { name: "square2" });
+  ]]);
 
-  // Safe combine instead of union
-  const combined = turf.featureCollection([square1, square2]);
+  // Compute union
+  let union = null;
+  try {
+    union = turf.union(square1, square2);
+  } catch(e) {
+    console.error("Union failed:", e);
+  }
 
-  L.geoJSON(combined, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
-
-  // Fit map to combined bounds
-  map.fitBounds(L.geoJSON(combined).getBounds());
+  // Draw only the union if successful
+  if (union) {
+    L.geoJSON(union, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
+    map.fitBounds(L.geoJSON(union).getBounds());
+  } else {
+    console.error("Union could not be computed.");
+  }
 </script>
 </body>
 </html>
