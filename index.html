@@ -34,7 +34,7 @@ const poly2 = turf.polygon([[
 ]], { fill: "#00f" });
 
   // Circle converted to polygon
-const poly3 = turf.circle([2.34, 48.88], 5, { steps: 64, units: 'degrees' });
+const poly3 = turf.circle([2.34, 48.88], 100, { steps: 64, units: 'meters' });
 
 // Union using Turf
 const union = turf.union(turf.featureCollection([poly1, poly2, poly3]));
