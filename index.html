@@ -26,7 +26,7 @@
       maxZoom: 19
     }).addTo(map);
 
-    // Example polygon (square)
+    // Example polygon (square) - NOTICE lng,lat order for GeoJSON!
     const polygon = turf.polygon([[
       [2.34, 48.85],
       [2.38, 48.85],
@@ -48,5 +48,4 @@
     // Draw union
     L.geoJSON(union, { style: { color: "green", fillOpacity: 0.5 } }).addTo(map);
   </script>
-</body>
-</html>
+</bod
