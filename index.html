@@ -31,10 +31,6 @@ const circle = turf.circle([7.57194444444444,48.5052777777778], 11.5, { steps: 1
 // Union polygon + circle
 const union = turf.union(turf.featureCollection([polygon, circle]));
 
-// Draw original shapes (optional)
-L.geoJSON(polygon, { style: { color: "#0f0", fillOpacity: 0.3 } }).addTo(map);
-L.geoJSON(circle, { style: { color: "#00f", fillOpacity: 0.3 } }).addTo(map);
-
 // Draw the union
 L.geoJSON(union, { style: { color: "red", fillOpacity: 0.5, weight: 3 } }).addTo(map);
 
