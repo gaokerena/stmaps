@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Leaflet + Turf Combine</title>
+  <title>Leaflet + Turf Union Basic</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>#map { height: 100vh; width: 100%; }</style>
@@ -16,7 +16,7 @@
   const map = L.map('map').setView([48.8566, 2.3522], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-  // Two overlapping squares as Turf Features
+  // Two overlapping squares
   const square1 = turf.polygon([[
     [2.34, 48.85],
     [2.38, 48.85],
@@ -33,14 +33,14 @@
     [2.36, 48.855]
   ]]);
 
-  // Combine them safely
-  const combined = turf.combine(turf.featureCollection([square1, square2]));
+  // Compute union
+  const union = turf.union(square1, square2);
 
-  // Draw combined layer only
-  L.geoJSON(combined, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
+  // Draw union polygon only
+  L.geoJSON(union, { style: { color: 'green', fillOpacity: 0.5 } }).addTo(map);
 
-  // Fit map to combined bounds
-  map.fitBounds(L.geoJSON(combined).getBounds());
+  // Zoom to fit
+  map.fitBounds(L.geoJSON(union).getBounds());
 </script>
 </body>
 </html>
