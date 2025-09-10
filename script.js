@@ -66,15 +66,14 @@ map.on("click", e => {
   const point = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
   clickCoords.push(point);
   clickedCoordsBox.update();
-
   L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
 });
 
-// ---- Fetch Data and Build Layer Groups ----
+// ---- Fetch Data and Build Grouped Layers ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    const groupedLayers = {}; // {Catégorie: {Nom: layer, ...}, ...}
+    const groupedLayers = {}; // {Catégorie: {Nom: layer}}
     let allFeatures = [];
 
     data.forEach(item => {
@@ -88,14 +87,11 @@ fetch(scriptURL)
       let combined = null;
       pairs.forEach(([p, intp]) => {
         if (!p) return;
-
         let featureP = buildFeature(p);
         if (featureP) featureP = turf.rewind(featureP, { reverse: false });
         let featureInt = intp ? buildFeature(intp) : null;
         if (featureInt) featureInt = turf.rewind(featureInt, { reverse: false });
-
         if (!featureP) return;
-
         let currentShape = featureP;
         if (featureInt) {
           try {
@@ -104,7 +100,6 @@ fetch(scriptURL)
             else return;
           } catch (err) { return; }
         }
-
         if (!combined) combined = currentShape;
         else {
           try { combined = turf.union(combined, currentShape); }
@@ -138,7 +133,7 @@ fetch(scriptURL)
       groupedLayers[cat][nom] = layer;
     });
 
-    // ---- Add grouped layer control (collapsible categories inside Leaflet menu) ----
+    // ---- Add grouped layer control ----
     L.control.groupedLayers(null, groupedLayers, { collapsed: true }).addTo(map);
 
     // Fit map to all features
