@@ -29,7 +29,8 @@ clickedCoordsBox.onAdd = function () {
   return this._div;
 };
 clickedCoordsBox.update = function () {
-  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
+  const htmlCoords = clickCoords.map(c => `[${c[0]}, ${c[1]}]`).join(' ');
+  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${htmlCoords}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
@@ -55,25 +56,21 @@ map.on("click", e => {
 });
 
 // ---- Button Event Listeners ----
-document.addEventListener("click", e => {
-  if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
-    L.DomEvent.stopPropagation(e); // Prevent map click
-  }
-
-  if (e.target.id === "clearBtn") {
-    clickCoords = [];
-    clickMarkers.clearLayers();
-    clickedCoordsBox.update();
-  }
-
-  if (e.target.id === "copyBtn") {
-    navigator.clipboard.writeText(JSON.stringify(clickCoords))
-      .then(() => alert("Coordinates copied to clipboard!"))
-      .catch(err => console.error("Copy failed", err));
-  }
+document.getElementById("clearBtn").addEventListener("click", e => {
+  L.DomEvent.stopPropagation(e);
+  clickCoords = [];
+  clickMarkers.clearLayers();
+  clickedCoordsBox.update();
 });
 
-// ---- Fetch Data + Build Layers by Category ----
+document.getElementById("copyBtn").addEventListener("click", e => {
+  L.DomEvent.stopPropagation(e);
+  navigator.clipboard.writeText(JSON.stringify(clickCoords))
+    .then(() => alert("Coordinates copied to clipboard!"))
+    .catch(err => console.error("Copy failed", err));
+});
+
+// ---- Fetch Data and Build Layer Groups ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
@@ -143,48 +140,13 @@ fetch(scriptURL)
       categoryGroups[categoryName][nomName] = nomLayer;
     });
 
-    // ---- Build non-exclusive checkboxes for categories ----
-    const container = document.getElementById("category-filters");
-
-    Object.keys(categoryGroups).forEach(cat => {
-      const label = document.createElement("label");
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.name = "category";
-      input.value = cat;
-      input.checked = true; // keep initially checked
-
-      // ---- NON-EXCLUSIVE change here ----
-      input.addEventListener("change", () => {
-        // Remove all existing Nom layers from map
-        Object.values(categoryGroups).forEach(group =>
-          Object.values(group).forEach(layer => map.removeLayer(layer))
-        );
-
-        // Remove existing layer control if exists
-        if (map._layersControl) {
-          map.removeControl(map._layersControl);
-        }
-
-        // Add Nom layers for all checked categories
-        const overlays = {};
-        document.querySelectorAll('input[name="category"]:checked').forEach(cb => {
-          const catName = cb.value;
-          Object.entries(categoryGroups[catName]).forEach(([nom, layer]) => {
-            layer.addTo(map);
-            overlays[nom] = layer;
-          });
-        });
-
-        // Add Leaflet layer control for current Nom layers
-        const lc = L.control.layers(null, overlays, { collapsed: false }).addTo(map);
-        map._layersControl = lc;
-      });
-
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(cat));
-      container.appendChild(label);
+    // ---- Add grouped layer control (collapsible) ----
+    const overlays = {};
+    Object.entries(categoryGroups).forEach(([cat, layers]) => {
+      overlays[cat] = layers; // group of Nom layers under Catégorie
     });
+
+    L.control.groupedLayers(null, overlays, { collapsed: true }).addTo(map);
 
     // Fit map to all features
     if (allFeatures.length > 0) {
