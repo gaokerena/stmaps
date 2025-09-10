@@ -73,11 +73,11 @@ document.addEventListener("click", e => {
   }
 });
 
-// ---- Fetch Data + Build Grouped Layers ----
+// ---- Fetch Data + Build Layers by Category ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    const groupedOverlays = {}; // {Catégorie: {Nom: layer}}
+    const categoryGroups = {}; // {Catégorie: {Nom: layer}}
 
     let allFeatures = [];
 
@@ -120,17 +120,16 @@ fetch(scriptURL)
       if (!combined) return;
       allFeatures.push(combined);
 
-      // --- Normalize color ---
+      // Normalize color
       let color = (item.couleur || "").trim();
       if (color.startsWith('"') && color.endsWith('"')) color = color.slice(1, -1);
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      // --- Category & Nom names ---
       const categoryName = (item.categorie || "").trim();
-      const nomName = item.nom;
+      const nomName = (item.nom || "").trim();
+      if (!categoryName || !nomName) return;
 
-      // --- Create Nom layer ---
       const nomLayer = L.geoJSON(combined, {
         color: color,
         fillColor: color,
@@ -141,14 +140,54 @@ fetch(scriptURL)
         { sticky: true }
       );
 
-      // --- Add layer to groupedOverlays ---
-      if (!groupedOverlays[categoryName]) groupedOverlays[categoryName] = {};
-      groupedOverlays[categoryName][nomName] = nomLayer;
+      if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
+      categoryGroups[categoryName][nomName] = nomLayer;
     });
 
-    // --- Add GroupedLayerControl ---
-    const glControl = L.control.groupedLayers(null, groupedOverlays, { collapsed: false });
-    glControl.addTo(map);
+    // ---- Build exclusive checkboxes for categories ----
+    const container = document.getElementById("category-filters");
+
+    Object.keys(categoryGroups).forEach(cat => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = "category";
+      input.value = cat;
+
+      input.addEventListener("change", () => {
+        // Exclusive: uncheck others
+        document.querySelectorAll('input[name="category"]').forEach(cb => {
+          if (cb !== input) cb.checked = false;
+        });
+
+        // Remove all existing Nom layers from map
+        Object.values(categoryGroups).forEach(group =>
+          Object.values(group).forEach(layer => map.removeLayer(layer))
+        );
+
+        // Remove existing layer control if exists
+        if (map._layersControl) {
+          map.removeControl(map._layersControl);
+        }
+
+        // Add selected category Nom layers and update layer control
+        const overlays = {};
+        if (input.checked) {
+          Object.entries(categoryGroups[cat]).forEach(([nom, layer]) => {
+            layer.addTo(map);
+            overlays[nom] = layer;
+          });
+        }
+
+        // Add Leaflet layer control for current Nom layers
+        const lc = L.control.layers(null, overlays, { collapsed: false }).addTo(map);
+        map._layersControl = lc; // store reference
+      });
+
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(cat));
+      container.appendChild(label);
+    });
 
     // Fit map to all features
     if (allFeatures.length > 0) {
