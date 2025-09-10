@@ -4,19 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Turf Data Viewer</title>
+
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <!-- Grouped Layer Control CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.groupedlayercontrol/dist/leaflet.groupedlayercontrol.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/leaflet.groupedlayercontrol/dist/leaflet.groupedlayercontrol.min.js"></script>
+
+  <!-- Your custom CSS -->
   <link rel="stylesheet" href="style.css" />
-  
 </head>
 <body>
   <h1>Turf Data</h1>
   <div id="map" style="height: 900px;"></div>
 
+  <!-- Leaflet JS (must come before plugins) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Turf.js -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <!-- Grouped Layer Control plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.groupedlayercontrol/dist/leaflet.groupedlayercontrol.min.js"></script>
+
+  <!-- Your script -->
   <script src="script.js"></script>
 </body>
 </html>
-
