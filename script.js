@@ -57,7 +57,7 @@ map.on("click", e => {
 // ---- Button Event Listeners ----
 document.addEventListener("click", e => {
   if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
-    L.DomEvent.stopPropagation(e); // Prevent adding coordinate
+    L.DomEvent.stopPropagation(e); // Prevent map click
   }
 
   if (e.target.id === "clearBtn") {
@@ -73,11 +73,12 @@ document.addEventListener("click", e => {
   }
 });
 
-// ---- Fetch Data + Build LayerGroups ----
+// ---- Fetch Data + Build Grouped Layers ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    const categoryGroups = {};
+    const groupedOverlays = {}; // {Catégorie: {Nom: layer}}
+
     let allFeatures = [];
 
     data.forEach(item => {
@@ -117,7 +118,6 @@ fetch(scriptURL)
       });
 
       if (!combined) return;
-
       allFeatures.push(combined);
 
       // --- Normalize color ---
@@ -126,8 +126,9 @@ fetch(scriptURL)
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      // --- Trim category name ---
+      // --- Category & Nom names ---
       const categoryName = (item.categorie || "").trim();
+      const nomName = item.nom;
 
       // --- Create Nom layer ---
       const nomLayer = L.geoJSON(combined, {
@@ -140,18 +141,14 @@ fetch(scriptURL)
         { sticky: true }
       );
 
-      // --- Add Nom layer to Catégorie LayerGroup ---
-      if (!categoryGroups[categoryName]) categoryGroups[categoryName] = L.layerGroup();
-      categoryGroups[categoryName].addLayer(nomLayer);
+      // --- Add layer to groupedOverlays ---
+      if (!groupedOverlays[categoryName]) groupedOverlays[categoryName] = {};
+      groupedOverlays[categoryName][nomName] = nomLayer;
     });
 
-    // Add all LayerGroups to map + Layer Control
-    const overlays = {};
-    Object.entries(categoryGroups).forEach(([cat, group]) => {
-      group.addTo(map);
-      overlays[cat] = group;
-    });
-    L.control.layers(null, overlays, { collapsed: false }).addTo(map);
+    // --- Add GroupedLayerControl ---
+    const glControl = L.control.groupedLayers(null, groupedOverlays, { collapsed: false });
+    glControl.addTo(map);
 
     // Fit map to all features
     if (allFeatures.length > 0) {
