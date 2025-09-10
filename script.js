@@ -29,7 +29,8 @@ clickedCoordsBox.onAdd = function () {
   return this._div;
 };
 clickedCoordsBox.update = function () {
-  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
+  const htmlCoords = clickCoords.map(c => `[${c[0]}, ${c[1]}]`).join(' ');
+  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${htmlCoords}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
@@ -55,20 +56,18 @@ map.on("click", e => {
 });
 
 // ---- Button Event Listeners ----
-document.addEventListener("click", e => {
-  if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
-    L.DomEvent.stopPropagation(e);
-  }
-  if (e.target.id === "clearBtn") {
-    clickCoords = [];
-    clickMarkers.clearLayers();
-    clickedCoordsBox.update();
-  }
-  if (e.target.id === "copyBtn") {
-    navigator.clipboard.writeText(JSON.stringify(clickCoords))
-      .then(() => alert("Coordinates copied to clipboard!"))
-      .catch(err => console.error("Copy failed", err));
-  }
+document.getElementById("clearBtn").addEventListener("click", e => {
+  L.DomEvent.stopPropagation(e);
+  clickCoords = [];
+  clickMarkers.clearLayers();
+  clickedCoordsBox.update();
+});
+
+document.getElementById("copyBtn").addEventListener("click", e => {
+  L.DomEvent.stopPropagation(e);
+  navigator.clipboard.writeText(JSON.stringify(clickCoords))
+    .then(() => alert("Coordinates copied to clipboard!"))
+    .catch(err => console.error("Copy failed", err));
 });
 
 // ---- Fetch Data + Build Layers by Category ----
@@ -153,7 +152,7 @@ fetch(scriptURL)
     const lc = L.control.layers(null, allNomLayers, { collapsed: false }).addTo(map);
     map._layersControl = lc;
 
-    // ---- Build exclusive checkboxes for categories ----
+    // ---- Build non-exclusive checkboxes for categories ----
     const container = document.getElementById("category-filters");
     Object.keys(categoryGroups).forEach(cat => {
       const label = document.createElement("label");
@@ -164,20 +163,17 @@ fetch(scriptURL)
       input.value = cat;
 
       input.addEventListener("change", () => {
-        // Exclusive: uncheck others
-        document.querySelectorAll('input[name="category"]').forEach(cb => {
-          if (cb !== input) cb.checked = false;
-        });
-
-        // Only show menu entries of selected category
         const overlaysContainer = document.querySelector('.leaflet-control-layers-overlays');
         if (!overlaysContainer) return;
 
         overlaysContainer.querySelectorAll('label').forEach(label => {
           const span = label.querySelector('span');
           const layerName = span ? span.textContent : '';
-          const isInCategory = input.checked && categoryGroups[cat][layerName];
-          label.style.display = isInCategory ? "" : "none";
+          const visibleInAnyCategory = Object.keys(categoryGroups).some(category => {
+            return document.querySelector(`input[name="category"][value="${category}"]`).checked &&
+                   categoryGroups[category][layerName];
+          });
+          label.style.display = visibleInAnyCategory ? "" : "none";
         });
       });
 
