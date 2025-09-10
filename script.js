@@ -29,83 +29,63 @@ clickedCoordsBox.onAdd = function () {
   return this._div;
 };
 clickedCoordsBox.update = function () {
-  // Remove outer brackets
-  const stripped = JSON.stringify(clickCoords).replace(/^\[|\]$/g, '');
-  this._div.innerHTML = `<strong>Clicked:</strong> <pre style="white-space: pre-wrap; max-width:60%;">${stripped}</pre>`;
+  this._div.innerHTML = `<strong>Clicked:</strong> <pre style="max-width:60%; white-space:pre-wrap;">${JSON.stringify(clickCoords, null, 2)}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
 // ---- Buttons ----
-const clearBtn = L.DomUtil.create('button', '');
-clearBtn.textContent = 'Clear';
-clearBtn.onclick = e => {
+const clearBtn = L.DomUtil.create("button", "", document.body);
+clearBtn.id = "clearBtn";
+clearBtn.innerText = "Clear";
+const copyBtn = L.DomUtil.create("button", "", document.body);
+copyBtn.id = "copyBtn";
+copyBtn.innerText = "Copy";
+
+L.DomEvent.on(clearBtn, 'click', e => {
   L.DomEvent.stopPropagation(e);
   clickCoords = [];
   clickMarkers.clearLayers();
   clickedCoordsBox.update();
-};
-const copyBtn = L.DomUtil.create('button', '');
-copyBtn.textContent = 'Copy';
-copyBtn.onclick = e => {
+});
+L.DomEvent.on(copyBtn, 'click', e => {
   L.DomEvent.stopPropagation(e);
   navigator.clipboard.writeText(JSON.stringify(clickCoords))
     .then(() => alert("Coordinates copied!"))
-    .catch(err => console.error("Copy failed", err));
-};
-const buttonsContainer = L.control({ position: "topleft" });
-buttonsContainer.onAdd = function () {
-  const div = L.DomUtil.create("div", "info button-box");
-  div.appendChild(clearBtn);
-  div.appendChild(copyBtn);
-  return div;
-};
-buttonsContainer.addTo(map);
-
-// ---- Map click handler ----
-map.on("click", e => {
-  const point = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
-  clickCoords.push(point);
-  clickedCoordsBox.update();
-  L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
+    .catch(err => console.error(err));
 });
 
-// ---- Fetch data + build layers ----
+// ---- Fetch Data + Build Features ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    const categoryGroups = {};
+    const categoryGroups = {}; // {Catégorie: {Nom: layer}}
     let allFeatures = [];
 
     data.forEach(item => {
-      const pairs = [
-        [item.p1, item.intp1],
-        [item.p2, item.intp2],
-        [item.p3, item.intp3],
-        [item.p4, item.intp4]
-      ];
+      const pairs = [[item.p1, item.intp1],[item.p2,item.intp2],[item.p3,item.intp3],[item.p4,item.intp4]];
 
       let combined = null;
 
-      pairs.forEach(([p, intp]) => {
-        if (!p) return;
+      pairs.forEach(([geom, intGeom]) => {
+        if (!geom) return;
 
-        let featureP = buildFeature(p);
-        let featureInt = intp ? buildFeature(intp) : null;
+        let feature = parseGeometry(geom);
+        if (!feature) return;
 
-        if (!featureP) return;
-        let currentShape = featureP;
-
-        if (featureInt) {
-          try {
-            const inter = turf.intersect(featureP, featureInt);
-            if (inter) currentShape = inter;
-          } catch (err) { return; }
+        if (intGeom) {
+          let intFeature = parseGeometry(intGeom);
+          if (intFeature) {
+            try { 
+              const intersection = turf.intersect(feature, intFeature);
+              if (intersection) feature = intersection;
+            } catch(e) { console.warn("Intersection failed", e); }
+          }
         }
 
-        if (!combined) combined = currentShape;
+        if (!combined) combined = feature;
         else {
-          try { combined = turf.union(combined, currentShape); }
-          catch (err) { console.warn("Union failed:", err); }
+          try { combined = turf.union(combined, feature); } 
+          catch(e) { console.warn("Union failed", e); }
         }
       });
 
@@ -114,64 +94,66 @@ fetch(scriptURL)
 
       // Normalize color
       let color = (item.couleur || "").trim();
-      if (color && color[0] !== "#") color = "#" + color;
+      if (color && color[0]!=="#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      const categoryName = item.categorie || "Unknown";
-      const nomName = item.nom || "Layer";
+      const category = (item.categorie||"").trim();
+      const nom = (item.nom||"").trim();
+      if (!category || !nom) return;
 
-      if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
-      const layer = L.geoJSON(combined, {
-        color: color,
-        fillColor: color,
-        weight: 2,
-        fillOpacity: 0.3
-      }).bindTooltip(`<strong>${item.nom}</strong><br/>Plancher: ${item.plancher}<br/>Plafond: ${item.plafond}`, { sticky: true });
+      const layer = L.geoJSON(combined, {color, fillColor: color, weight:2, fillOpacity:0.3})
+        .bindTooltip(`<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`, {sticky:true});
 
-      categoryGroups[categoryName][nomName] = layer;
+      if (!categoryGroups[category]) categoryGroups[category] = {};
+      categoryGroups[category][nom] = layer;
     });
 
-    // ---- Panel layers ----
-    const baseLayers = {};
-    const overlays = Object.entries(categoryGroups).map(([cat, layers]) => ({
-      group: cat,
-      layers: Object.entries(layers).map(([name, layer]) => ({ name, layer }))
-    }));
-    new L.Control.PanelLayers(baseLayers, overlays, { collapsibleGroups: true }).addTo(map);
+    // ---- Build Leaflet Panel Layers ----
+    const overlays = [];
+    Object.entries(categoryGroups).forEach(([cat, nomLayers]) => {
+      const layersArray = Object.entries(nomLayers).map(([nom, layer]) => ({name: nom, layer}));
+      overlays.push({group: cat, layers: layersArray});
+    });
 
-    // Fit map
-    if (allFeatures.length > 0) {
+    const panelLayers = new L.Control.PanelLayers(null, overlays, {collapsibleGroups:true});
+    map.addControl(panelLayers);
+
+    // ---- Fit map to all features ----
+    if (allFeatures.length>0){
       const fc = turf.featureCollection(allFeatures);
       const bbox = turf.bbox(fc);
-      if (bbox.every(n => typeof n === "number")) map.fitBounds([[bbox[1], bbox[0]], [bbox[3], bbox[2]]]);
+      map.fitBounds([[bbox[1], bbox[0]], [bbox[3], bbox[2]]]);
     }
   })
   .catch(err => console.error("Error fetching data:", err));
 
-// ---- Build feature with auto-wrapping ----
-function buildFeature(obj) {
+// ---- Universal Geometry Parser ----
+function parseGeometry(obj){
+  if (!obj) return null;
+
   try {
-    const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
+    const parsed = typeof obj==="string" ? JSON.parse(obj) : obj;
 
     // Circle
-    if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options);
+    if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options||{});
 
-    // Array of coordinates
-    if (Array.isArray(parsed)) {
-      if (parsed.length === 1 || (parsed[0].length === 2 && parsed.length === 1)) {
-        // Single point
-        return turf.point(parsed[0]);
-      } else if (parsed[0].length === 2 && parsed[parsed.length-1][0] !== parsed[0][0] || parsed[parsed.length-1][1] !== parsed[0][1]) {
-        // Line
+    // Array
+    if (Array.isArray(parsed)){
+      // Single point
+      if (parsed.length===2 && typeof parsed[0]==="number" && typeof parsed[1]==="number")
+        return turf.point(parsed);
+
+      // Line or polygon
+      if (parsed.length>1 && Array.isArray(parsed[0])){
+        const first = parsed[0], last = parsed[parsed.length-1];
+        const isPolygon = first[0]===last[0] && first[1]===last[1];
+        if (isPolygon) return turf.polygon([parsed]);
         return turf.lineString(parsed);
-      } else {
-        // Polygon
-        const poly = Array.isArray(parsed[0][0]) ? parsed : [parsed];
-        return turf.polygon(poly);
       }
     }
-  } catch (err) {
-    console.warn("Invalid geometry:", obj, err);
+  } catch(e){
+    console.warn("Invalid geometry:", obj, e);
   }
+
   return null;
 }
