@@ -23,6 +23,9 @@ body {
 }
 
 /* Clicked coordinates box styling for horizontal wrapping */
+.info.clicked-coords {
+  max-width: 60%;
+}
 .info.clicked-coords pre {
   white-space: normal;   /* allow wrapping */
   display: flex;
