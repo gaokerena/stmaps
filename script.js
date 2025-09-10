@@ -30,7 +30,7 @@ clickedCoordsBox.onAdd = function () {
 };
 clickedCoordsBox.update = function () {
   const htmlCoords = clickCoords.map(c => `[${c[0]}, ${c[1]}]`).join(' ');
-  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${htmlCoords}</pre>`;
+  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre style="white-space: normal;">${htmlCoords}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
@@ -45,15 +45,6 @@ buttonsControl.onAdd = function () {
   return container;
 };
 buttonsControl.addTo(map);
-
-// ---- Map Click Handler ----
-map.on("click", e => {
-  const point = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
-  clickCoords.push(point);
-  clickedCoordsBox.update();
-
-  L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
-});
 
 // ---- Button Event Listeners ----
 document.getElementById("clearBtn").addEventListener("click", e => {
@@ -70,11 +61,20 @@ document.getElementById("copyBtn").addEventListener("click", e => {
     .catch(err => console.error("Copy failed", err));
 });
 
+// ---- Map Click Handler ----
+map.on("click", e => {
+  const point = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
+  clickCoords.push(point);
+  clickedCoordsBox.update();
+
+  L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
+});
+
 // ---- Fetch Data and Build Layer Groups ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    const categoryGroups = {}; // {Catégorie: {Nom: layer}}
+    const groupedLayers = {}; // {Catégorie: {Nom: layer, ...}, ...}
     let allFeatures = [];
 
     data.forEach(item => {
@@ -91,7 +91,6 @@ fetch(scriptURL)
 
         let featureP = buildFeature(p);
         if (featureP) featureP = turf.rewind(featureP, { reverse: false });
-
         let featureInt = intp ? buildFeature(intp) : null;
         if (featureInt) featureInt = turf.rewind(featureInt, { reverse: false });
 
@@ -118,15 +117,14 @@ fetch(scriptURL)
 
       // Normalize color
       let color = (item.couleur || "").trim();
-      if (color.startsWith('"') && color.endsWith('"')) color = color.slice(1, -1);
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      const categoryName = (item.categorie || "").trim();
-      const nomName = (item.nom || "").trim();
-      if (!categoryName || !nomName) return;
+      const cat = (item.categorie || "").trim();
+      const nom = (item.nom || "").trim();
+      if (!cat || !nom) return;
 
-      const nomLayer = L.geoJSON(combined, {
+      const layer = L.geoJSON(combined, {
         color: color,
         fillColor: color,
         weight: 2,
@@ -136,17 +134,12 @@ fetch(scriptURL)
         { sticky: true }
       );
 
-      if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
-      categoryGroups[categoryName][nomName] = nomLayer;
+      if (!groupedLayers[cat]) groupedLayers[cat] = {};
+      groupedLayers[cat][nom] = layer;
     });
 
-    // ---- Add grouped layer control (collapsible) ----
-    const overlays = {};
-    Object.entries(categoryGroups).forEach(([cat, layers]) => {
-      overlays[cat] = layers; // group of Nom layers under Catégorie
-    });
-
-    L.control.groupedLayers(null, overlays, { collapsed: true }).addTo(map);
+    // ---- Add grouped layer control (collapsible categories inside Leaflet menu) ----
+    L.control.groupedLayers(null, groupedLayers, { collapsed: true }).addTo(map);
 
     // Fit map to all features
     if (allFeatures.length > 0) {
@@ -161,7 +154,13 @@ fetch(scriptURL)
 function buildFeature(obj) {
   try {
     const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-    if (Array.isArray(parsed)) return turf.polygon(parsed);
+    if (Array.isArray(parsed)) {
+      if (parsed.length === 1) return turf.point(parsed[0]);
+      if (parsed.length > 1 && parsed[0][0] !== parsed[parsed.length-1][0] && parsed[0][1] !== parsed[parsed.length-1][1]) {
+        return turf.lineString(parsed);
+      }
+      return turf.polygon(parsed);
+    }
     if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options);
   } catch (err) {
     console.warn("Invalid geometry:", obj, err);
