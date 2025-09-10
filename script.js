@@ -78,7 +78,6 @@ fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
     const categoryGroups = {}; // {Catégorie: {Nom: layer}}
-
     let allFeatures = [];
 
     data.forEach(item => {
@@ -142,6 +141,9 @@ fetch(scriptURL)
 
       if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
       categoryGroups[categoryName][nomName] = nomLayer;
+
+      // Add all layers to the map immediately
+      nomLayer.addTo(map);
     });
 
     // ---- Build exclusive checkboxes for categories ----
@@ -160,28 +162,21 @@ fetch(scriptURL)
           if (cb !== input) cb.checked = false;
         });
 
-        // Remove all existing Nom layers from map
-        Object.values(categoryGroups).forEach(group =>
-          Object.values(group).forEach(layer => map.removeLayer(layer))
-        );
-
         // Remove existing layer control if exists
         if (map._layersControl) {
           map.removeControl(map._layersControl);
         }
 
-        // Add selected category Nom layers and update layer control
+        // Build Leaflet layer control for selected category Nom layers only
         const overlays = {};
         if (input.checked) {
           Object.entries(categoryGroups[cat]).forEach(([nom, layer]) => {
-            layer.addTo(map);
             overlays[nom] = layer;
           });
         }
 
-        // Add Leaflet layer control for current Nom layers
         const lc = L.control.layers(null, overlays, { collapsed: false }).addTo(map);
-        map._layersControl = lc; // store reference
+        map._layersControl = lc;
       });
 
       label.appendChild(input);
