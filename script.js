@@ -91,12 +91,11 @@ fetch(scriptURL)
         if (!p) return;
 
         let featureP = buildFeature(p);
-        if (featureP) featureP = turf.rewind(featureP, { reverse: false });
+        if (!featureP) return;
+        featureP = turf.rewind(featureP, { reverse: false });
 
         let featureInt = intp ? buildFeature(intp) : null;
         if (featureInt) featureInt = turf.rewind(featureInt, { reverse: false });
-
-        if (!featureP) return;
 
         let currentShape = featureP;
         if (featureInt) {
@@ -152,7 +151,7 @@ fetch(scriptURL)
     const lc = L.control.layers(null, allNomLayers, { collapsed: false }).addTo(map);
     map._layersControl = lc;
 
-    // ---- Build non-exclusive checkboxes for categories ----
+    // ---- Non-exclusive checkboxes for categories, checked by default ----
     const container = document.getElementById("category-filters");
     Object.keys(categoryGroups).forEach(cat => {
       const label = document.createElement("label");
@@ -161,6 +160,7 @@ fetch(scriptURL)
       input.type = "checkbox";
       input.name = "category";
       input.value = cat;
+      input.checked = true; // ✅ checked by default
 
       input.addEventListener("change", () => {
         const overlaysContainer = document.querySelector('.leaflet-control-layers-overlays');
@@ -195,8 +195,20 @@ fetch(scriptURL)
 function buildFeature(obj) {
   try {
     const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-    if (Array.isArray(parsed)) return turf.polygon(parsed);
+
+    // Circle
     if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options);
+
+    // Single coordinate → point
+    if (Array.isArray(parsed) && parsed.length === 1) return turf.point(parsed[0]);
+
+    // Multiple coordinates
+    if (Array.isArray(parsed) && parsed.length > 1) {
+      const first = parsed[0];
+      const last = parsed[parsed.length - 1];
+      if (first[0] !== last[0] || first[1] !== last[1]) return turf.lineString(parsed);
+      else return turf.polygon([parsed]);
+    }
   } catch (err) {
     console.warn("Invalid geometry:", obj, err);
   }
