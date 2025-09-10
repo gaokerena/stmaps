@@ -92,8 +92,14 @@ fetch(scriptURL)
       let combined = null;
       pairs.forEach(([p, intp]) => {
         if (!p) return;
-        const featureP = buildFeature(p);
-        const featureInt = intp ? buildFeature(intp) : null;
+
+        // Build features and rewind to counterclockwise
+        let featureP = buildFeature(p);
+        if (featureP) featureP = turf.rewind(featureP, { reverse: false });
+
+        let featureInt = intp ? buildFeature(intp) : null;
+        if (featureInt) featureInt = turf.rewind(featureInt, { reverse: false });
+
         if (!featureP) return;
 
         let currentShape = featureP;
@@ -107,9 +113,8 @@ fetch(scriptURL)
 
         if (!combined) combined = currentShape;
         else {
-          try {
-            combined = turf.union(combined, currentShape);
-          } catch (e) { console.warn("Union failed:", e); }
+          try { combined = turf.union(combined, currentShape); }
+          catch(e) { console.warn("Union failed:", e); }
         }
       });
 
@@ -117,10 +122,14 @@ fetch(scriptURL)
 
       allFeatures.push(combined);
 
+      // Trim & validate color from sheet
+      let color = (item.couleur || "").trim();
+      if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
+
       // Create individual layer for Nom
       const nomLayer = L.geoJSON(combined, {
-        color: item.couleur || "#3388ff",
-        fillColor: item.couleur || "#3388ff",
+        color: color,
+        fillColor: color,
         weight: 2,
         fillOpacity: 0.3
       }).bindTooltip(
