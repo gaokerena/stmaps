@@ -51,15 +51,13 @@ map.on("click", e => {
   clickCoords.push(point);
   clickedCoordsBox.update();
 
-  // Visual feedback
   L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
 });
 
 // ---- Button Event Listeners ----
 document.addEventListener("click", e => {
   if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
-    // Stop propagation so map click doesn't fire
-    L.DomEvent.stopPropagation(e);
+    L.DomEvent.stopPropagation(e); // Prevent adding coordinate
   }
 
   if (e.target.id === "clearBtn") {
@@ -83,7 +81,6 @@ fetch(scriptURL)
     let allFeatures = [];
 
     data.forEach(item => {
-      // Build unioned geometry for this Nom
       const pairs = [
         [item.p1, item.intp1],
         [item.p2, item.intp2],
@@ -123,27 +120,29 @@ fetch(scriptURL)
 
       allFeatures.push(combined);
 
-      // Trim color, prepend # if missing, fallback
+      // --- Normalize color ---
       let color = (item.couleur || "").trim();
+      if (color.startsWith('"') && color.endsWith('"')) color = color.slice(1, -1);
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      // Create Nom layer
+      // --- Trim category name ---
+      const categoryName = (item.categorie || "").trim();
+
+      // --- Create Nom layer ---
       const nomLayer = L.geoJSON(combined, {
         color: color,
         fillColor: color,
         weight: 2,
         fillOpacity: 0.3
       }).bindTooltip(
-        `<strong>${item.nom}</strong><br/>
-         Plancher: ${item.plancher}<br/>
-         Plafond: ${item.plafond}`,
+        `<strong>${item.nom}</strong><br/>Plancher: ${item.plancher}<br/>Plafond: ${item.plafond}`,
         { sticky: true }
       );
 
-      // Add Nom layer to Catégorie LayerGroup
-      if (!categoryGroups[item.categorie]) categoryGroups[item.categorie] = L.layerGroup();
-      categoryGroups[item.categorie].addLayer(nomLayer);
+      // --- Add Nom layer to Catégorie LayerGroup ---
+      if (!categoryGroups[categoryName]) categoryGroups[categoryName] = L.layerGroup();
+      categoryGroups[categoryName].addLayer(nomLayer);
     });
 
     // Add all LayerGroups to map + Layer Control
@@ -152,7 +151,6 @@ fetch(scriptURL)
       group.addTo(map);
       overlays[cat] = group;
     });
-
     L.control.layers(null, overlays, { collapsed: false }).addTo(map);
 
     // Fit map to all features
