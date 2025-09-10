@@ -21,3 +21,22 @@ h1 {
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
+
+.info.button-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info.button-box button {
+  cursor: pointer;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.info.button-box button:hover {
+  background: #f0f0f0;
+}
