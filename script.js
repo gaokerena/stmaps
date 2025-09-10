@@ -73,14 +73,15 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ---- Fetch Data + Build Layer Groups (same as before) ----
+// ---- Fetch Data + Build Layer Groups ----
 fetch(scriptURL)
   .then(response => response.json())
   .then(data => {
-    const categoryGroups = {};
+    const categoryGroups = {}; // Catégorie => LayerGroup
     let allFeatures = [];
 
     data.forEach(item => {
+      // Build unioned geometry for this Nom
       const pairs = [
         [item.p1, item.intp1],
         [item.p2, item.intp2],
@@ -112,30 +113,31 @@ fetch(scriptURL)
         }
       });
 
-      if (combined) {
-        allFeatures.push(combined);
-        if (!categoryGroups[item.categorie]) {
-          categoryGroups[item.categorie] = L.layerGroup();
-        }
+      if (!combined) return;
 
-        const layer = L.geoJSON(combined, {
-          color: item.couleur || "#3388ff",
-          fillColor: item.couleur || "#3388ff",
-          weight: 2,
-          fillOpacity: 0.3
-        });
+      allFeatures.push(combined);
 
-        layer.bindTooltip(
-          `<strong>${item.nom}</strong><br/>
-           Plancher: ${item.plancher}<br/>
-           Plafond: ${item.plafond}`,
-          { sticky: true }
-        );
+      // Create individual layer for Nom
+      const nomLayer = L.geoJSON(combined, {
+        color: item.couleur || "#3388ff",
+        fillColor: item.couleur || "#3388ff",
+        weight: 2,
+        fillOpacity: 0.3
+      }).bindTooltip(
+        `<strong>${item.nom}</strong><br/>
+         Plancher: ${item.plancher}<br/>
+         Plafond: ${item.plafond}`,
+        { sticky: true }
+      );
 
-        categoryGroups[item.categorie].addLayer(layer);
+      // Add Nom layer to the correct Catégorie group
+      if (!categoryGroups[item.categorie]) {
+        categoryGroups[item.categorie] = L.layerGroup();
       }
+      categoryGroups[item.categorie].addLayer(nomLayer);
     });
 
+    // Add LayerGroups to map + Layer Control
     const overlays = {};
     Object.entries(categoryGroups).forEach(([cat, group]) => {
       group.addTo(map);
@@ -144,6 +146,7 @@ fetch(scriptURL)
 
     L.control.layers(null, overlays, { collapsed: false }).addTo(map);
 
+    // Fit map to all features
     if (allFeatures.length > 0) {
       const fc = turf.featureCollection(allFeatures);
       const bbox = turf.bbox(fc);
@@ -162,6 +165,3 @@ function buildFeature(obj) {
   }
   return null;
 }
-
-
-
