@@ -29,8 +29,7 @@ clickedCoordsBox.onAdd = function () {
   return this._div;
 };
 clickedCoordsBox.update = function () {
-  const htmlCoords = clickCoords.map(c => `[${c[0]}, ${c[1]}]`).join(' ');
-  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${htmlCoords}</pre>`;
+  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
@@ -56,18 +55,22 @@ map.on("click", e => {
 });
 
 // ---- Button Event Listeners ----
-document.getElementById("clearBtn").addEventListener("click", e => {
-  L.DomEvent.stopPropagation(e);
-  clickCoords = [];
-  clickMarkers.clearLayers();
-  clickedCoordsBox.update();
-});
+document.addEventListener("click", e => {
+  if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
+    L.DomEvent.stopPropagation(e); // Prevent map click
+  }
 
-document.getElementById("copyBtn").addEventListener("click", e => {
-  L.DomEvent.stopPropagation(e);
-  navigator.clipboard.writeText(JSON.stringify(clickCoords))
-    .then(() => alert("Coordinates copied to clipboard!"))
-    .catch(err => console.error("Copy failed", err));
+  if (e.target.id === "clearBtn") {
+    clickCoords = [];
+    clickMarkers.clearLayers();
+    clickedCoordsBox.update();
+  }
+
+  if (e.target.id === "copyBtn") {
+    navigator.clipboard.writeText(JSON.stringify(clickCoords))
+      .then(() => alert("Coordinates copied to clipboard!"))
+      .catch(err => console.error("Copy failed", err));
+  }
 });
 
 // ---- Fetch Data + Build Layers by Category ----
@@ -75,7 +78,6 @@ fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
     const categoryGroups = {}; // {Catégorie: {Nom: layer}}
-    const allNomLayers = {}; // Flat object {Nom: layer} for the layer control
     let allFeatures = [];
 
     data.forEach(item => {
@@ -91,11 +93,12 @@ fetch(scriptURL)
         if (!p) return;
 
         let featureP = buildFeature(p);
-        if (!featureP) return;
-        featureP = turf.rewind(featureP, { reverse: false });
+        if (featureP) featureP = turf.rewind(featureP, { reverse: false });
 
         let featureInt = intp ? buildFeature(intp) : null;
         if (featureInt) featureInt = turf.rewind(featureInt, { reverse: false });
+
+        if (!featureP) return;
 
         let currentShape = featureP;
         if (featureInt) {
@@ -136,46 +139,46 @@ fetch(scriptURL)
         { sticky: true }
       );
 
-      // Add to map
-      nomLayer.addTo(map);
-
-      // Add to categoryGroups
       if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
       categoryGroups[categoryName][nomName] = nomLayer;
-
-      // Add to flat layer control object
-      allNomLayers[nomName] = nomLayer;
     });
 
-    // ---- Build single layer control with all Nom layers ----
-    const lc = L.control.layers(null, allNomLayers, { collapsed: false }).addTo(map);
-    map._layersControl = lc;
-
-    // ---- Non-exclusive checkboxes for categories ----
+    // ---- Build non-exclusive checkboxes for categories ----
     const container = document.getElementById("category-filters");
+
     Object.keys(categoryGroups).forEach(cat => {
       const label = document.createElement("label");
-      label.style.marginRight = "10px";
       const input = document.createElement("input");
       input.type = "checkbox";
       input.name = "category";
       input.value = cat;
-      input.checked = true; // can remain checked initially
+      input.checked = true; // keep initially checked
 
-      // Non-exclusive: no code to uncheck others
+      // ---- NON-EXCLUSIVE change here ----
       input.addEventListener("change", () => {
-        const overlaysContainer = document.querySelector('.leaflet-control-layers-overlays');
-        if (!overlaysContainer) return;
+        // Remove all existing Nom layers from map
+        Object.values(categoryGroups).forEach(group =>
+          Object.values(group).forEach(layer => map.removeLayer(layer))
+        );
 
-        overlaysContainer.querySelectorAll('label').forEach(label => {
-          const span = label.querySelector('span');
-          const layerName = span ? span.textContent : '';
-          const visibleInAnyCategory = Object.keys(categoryGroups).some(category => {
-            return document.querySelector(`input[name="category"][value="${category}"]`).checked &&
-                   categoryGroups[category][layerName];
+        // Remove existing layer control if exists
+        if (map._layersControl) {
+          map.removeControl(map._layersControl);
+        }
+
+        // Add Nom layers for all checked categories
+        const overlays = {};
+        document.querySelectorAll('input[name="category"]:checked').forEach(cb => {
+          const catName = cb.value;
+          Object.entries(categoryGroups[catName]).forEach(([nom, layer]) => {
+            layer.addTo(map);
+            overlays[nom] = layer;
           });
-          label.style.display = visibleInAnyCategory ? "" : "none";
         });
+
+        // Add Leaflet layer control for current Nom layers
+        const lc = L.control.layers(null, overlays, { collapsed: false }).addTo(map);
+        map._layersControl = lc;
       });
 
       label.appendChild(input);
@@ -196,20 +199,8 @@ fetch(scriptURL)
 function buildFeature(obj) {
   try {
     const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-
-    // Circle
+    if (Array.isArray(parsed)) return turf.polygon(parsed);
     if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options);
-
-    // Single coordinate → point
-    if (Array.isArray(parsed) && parsed.length === 1) return turf.point(parsed[0]);
-
-    // Multiple coordinates
-    if (Array.isArray(parsed) && parsed.length > 1) {
-      const first = parsed[0];
-      const last = parsed[parsed.length - 1];
-      if (first[0] !== last[0] || first[1] !== last[1]) return turf.lineString(parsed);
-      else return turf.polygon([parsed]);
-    }
   } catch (err) {
     console.warn("Invalid geometry:", obj, err);
   }
