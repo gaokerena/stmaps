@@ -21,3 +21,16 @@ body {
   box-shadow: 0 0 5px rgba(0,0,0,0.3);
   font-size: 14px;
 }
+
+/* Clicked coordinates box styling for horizontal wrapping */
+.info.clicked-coords pre {
+  white-space: normal;   /* allow wrapping */
+  display: flex;
+  flex-wrap: wrap;       /* wrap to multiple lines */
+  gap: 10px;             /* space between coordinate blocks */
+  margin: 0;
+}
+.info.clicked-coords strong {
+  display: block;
+  margin-bottom: 5px;
+}
