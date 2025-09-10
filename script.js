@@ -29,7 +29,8 @@ clickedCoordsBox.onAdd = function () {
   return this._div;
 };
 clickedCoordsBox.update = function () {
-  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
+  const htmlCoords = clickCoords.map(c => `[${c[0]}, ${c[1]}]`).join(' ');
+  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre style="white-space: normal; max-width: 60%;">${htmlCoords}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
@@ -45,6 +46,21 @@ buttonsControl.onAdd = function () {
 };
 buttonsControl.addTo(map);
 
+// ---- Button Event Listeners ----
+document.getElementById("clearBtn").addEventListener("click", e => {
+  L.DomEvent.stopPropagation(e);
+  clickCoords = [];
+  clickMarkers.clearLayers();
+  clickedCoordsBox.update();
+});
+
+document.getElementById("copyBtn").addEventListener("click", e => {
+  L.DomEvent.stopPropagation(e);
+  navigator.clipboard.writeText(JSON.stringify(clickCoords))
+    .then(() => alert("Coordinates copied to clipboard!"))
+    .catch(err => console.error("Copy failed", err));
+});
+
 // ---- Map Click Handler ----
 map.on("click", e => {
   const point = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
@@ -54,30 +70,11 @@ map.on("click", e => {
   L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
 });
 
-// ---- Button Event Listeners ----
-document.addEventListener("click", e => {
-  if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
-    L.DomEvent.stopPropagation(e); // Prevent map click
-  }
-
-  if (e.target.id === "clearBtn") {
-    clickCoords = [];
-    clickMarkers.clearLayers();
-    clickedCoordsBox.update();
-  }
-
-  if (e.target.id === "copyBtn") {
-    navigator.clipboard.writeText(JSON.stringify(clickCoords))
-      .then(() => alert("Coordinates copied to clipboard!"))
-      .catch(err => console.error("Copy failed", err));
-  }
-});
-
-// ---- Fetch Data + Build Grouped Layers ----
+// ---- Fetch Data and Build Layer Groups ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    const groupedOverlays = {}; // {Catégorie: {Nom: layer}}
+    const groupedLayers = {}; // {Catégorie: {Nom: layer, ...}, ...}
     let allFeatures = [];
 
     data.forEach(item => {
@@ -94,7 +91,6 @@ fetch(scriptURL)
 
         let featureP = buildFeature(p);
         if (featureP) featureP = turf.rewind(featureP, { reverse: false });
-
         let featureInt = intp ? buildFeature(intp) : null;
         if (featureInt) featureInt = turf.rewind(featureInt, { reverse: false });
 
@@ -119,19 +115,16 @@ fetch(scriptURL)
       if (!combined) return;
       allFeatures.push(combined);
 
-      // --- Normalize color ---
+      // Normalize color
       let color = (item.couleur || "").trim();
-      if (color.startsWith('"') && color.endsWith('"')) color = color.slice(1, -1);
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      // --- Category & Nom names ---
-      const categoryName = (item.categorie || "").trim();
-      const nomName = (item.nom || "").trim();
-      if (!categoryName || !nomName) return;
+      const cat = (item.categorie || "").trim();
+      const nom = (item.nom || "").trim();
+      if (!cat || !nom) return;
 
-      // --- Create Nom layer (do NOT call addTo(map) here) ---
-      const nomLayer = L.geoJSON(combined, {
+      const layer = L.geoJSON(combined, {
         color: color,
         fillColor: color,
         weight: 2,
@@ -141,14 +134,12 @@ fetch(scriptURL)
         { sticky: true }
       );
 
-      // --- Add to groupedOverlays ---
-      if (!groupedOverlays[categoryName]) groupedOverlays[categoryName] = {};
-      groupedOverlays[categoryName][nomName] = nomLayer;
+      if (!groupedLayers[cat]) groupedLayers[cat] = {};
+      groupedLayers[cat][nom] = layer;
     });
 
-    // --- Create grouped layer control ---
-    const glControl = L.control.groupedLayers(null, groupedOverlays, { collapsed: false });
-    glControl.addTo(map);
+    // ---- Add grouped layer control (collapsible categories inside Leaflet menu) ----
+    L.control.groupedLayers(null, groupedLayers, { collapsed: true }).addTo(map);
 
     // Fit map to all features
     if (allFeatures.length > 0) {
@@ -163,8 +154,28 @@ fetch(scriptURL)
 function buildFeature(obj) {
   try {
     const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-    if (Array.isArray(parsed)) return turf.polygon(parsed);
+
+    // Circle
     if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options);
+
+    // Array of coordinates
+    if (Array.isArray(parsed)) {
+      // Single coordinate → Point
+      if (parsed.length === 1 && Array.isArray(parsed[0]) && parsed[0].length === 2) {
+        return turf.point(parsed[0]);
+      }
+
+      // Handle possible nested polygon array
+      const coords = parsed[0] && Array.isArray(parsed[0][0]) ? parsed[0] : parsed;
+
+      // Closed polygon (first = last)
+      if (coords.length > 2 && coords[0][0] === coords[coords.length-1][0] && coords[0][1] === coords[coords.length-1][1]) {
+        return turf.polygon([coords]);
+      }
+
+      // Otherwise treat as LineString
+      return turf.lineString(coords);
+    }
   } catch (err) {
     console.warn("Invalid geometry:", obj, err);
   }
