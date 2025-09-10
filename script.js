@@ -1,9 +1,7 @@
 const scriptURL = "https://script.google.com/macros/s/AKfycbxHz5OBOFSrpRUZlKqL_5h-yk3jVJkW9wrKd2YXUm7Of-iRzY0zitxt_LGNj7jXifAW/exec";
 
 const map = L.map('map').setView([48.5, 7.5], 8);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
@@ -21,7 +19,7 @@ mouseCoordsBox.update = function (latlng) {
     : `<strong>Mouse:</strong> Move over map`;
 };
 mouseCoordsBox.addTo(map);
-map.on("mousemove", (e) => mouseCoordsBox.update(e.latlng));
+map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
 // ---- Clicked Coordinates Box ----
 const clickedCoordsBox = L.control({ position: "bottomright" });
@@ -31,10 +29,7 @@ clickedCoordsBox.onAdd = function () {
   return this._div;
 };
 clickedCoordsBox.update = function () {
-  this._div.innerHTML = `
-    <strong>Clicked:</strong><br/>
-    <pre>${JSON.stringify(clickCoords, null, 2)}</pre>
-  `;
+  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
@@ -50,22 +45,29 @@ buttonsControl.onAdd = function () {
 };
 buttonsControl.addTo(map);
 
-map.on("click", (e) => {
+// ---- Map Click Handler ----
+map.on("click", e => {
   const point = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
   clickCoords.push(point);
   clickedCoordsBox.update();
 
-  // Add a marker for visual feedback
+  // Visual feedback
   L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
 });
 
 // ---- Button Event Listeners ----
-document.addEventListener("click", (e) => {
+document.addEventListener("click", e => {
+  if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
+    // Stop propagation so map click doesn't fire
+    L.DomEvent.stopPropagation(e);
+  }
+
   if (e.target.id === "clearBtn") {
     clickCoords = [];
     clickMarkers.clearLayers();
     clickedCoordsBox.update();
   }
+
   if (e.target.id === "copyBtn") {
     navigator.clipboard.writeText(JSON.stringify(clickCoords))
       .then(() => alert("Coordinates copied to clipboard!"))
@@ -73,11 +75,11 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ---- Fetch Data + Build Layer Groups ----
+// ---- Fetch Data + Build LayerGroups ----
 fetch(scriptURL)
-  .then(response => response.json())
+  .then(resp => resp.json())
   .then(data => {
-    const categoryGroups = {}; // Catégorie => LayerGroup
+    const categoryGroups = {};
     let allFeatures = [];
 
     data.forEach(item => {
@@ -93,7 +95,6 @@ fetch(scriptURL)
       pairs.forEach(([p, intp]) => {
         if (!p) return;
 
-        // Build features and rewind to counterclockwise
         let featureP = buildFeature(p);
         if (featureP) featureP = turf.rewind(featureP, { reverse: false });
 
@@ -108,13 +109,13 @@ fetch(scriptURL)
             const inter = turf.intersect(featureP, featureInt);
             if (inter) currentShape = inter;
             else return;
-          } catch (e) { return; }
+          } catch (err) { return; }
         }
 
         if (!combined) combined = currentShape;
         else {
           try { combined = turf.union(combined, currentShape); }
-          catch(e) { console.warn("Union failed:", e); }
+          catch (err) { console.warn("Union failed:", err); }
         }
       });
 
@@ -122,11 +123,12 @@ fetch(scriptURL)
 
       allFeatures.push(combined);
 
-      // Trim & validate color from sheet
+      // Trim color, prepend # if missing, fallback
       let color = (item.couleur || "").trim();
+      if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      // Create individual layer for Nom
+      // Create Nom layer
       const nomLayer = L.geoJSON(combined, {
         color: color,
         fillColor: color,
@@ -139,14 +141,12 @@ fetch(scriptURL)
         { sticky: true }
       );
 
-      // Add Nom layer to the correct Catégorie group
-      if (!categoryGroups[item.categorie]) {
-        categoryGroups[item.categorie] = L.layerGroup();
-      }
+      // Add Nom layer to Catégorie LayerGroup
+      if (!categoryGroups[item.categorie]) categoryGroups[item.categorie] = L.layerGroup();
       categoryGroups[item.categorie].addLayer(nomLayer);
     });
 
-    // Add LayerGroups to map + Layer Control
+    // Add all LayerGroups to map + Layer Control
     const overlays = {};
     Object.entries(categoryGroups).forEach(([cat, group]) => {
       group.addTo(map);
@@ -164,13 +164,14 @@ fetch(scriptURL)
   })
   .catch(err => console.error("Error fetching data:", err));
 
+// ---- Build Feature from JSON string ----
 function buildFeature(obj) {
   try {
     const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
     if (Array.isArray(parsed)) return turf.polygon(parsed);
     if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options);
-  } catch (e) {
-    console.warn("Invalid geometry:", obj, e);
+  } catch (err) {
+    console.warn("Invalid geometry:", obj, err);
   }
   return null;
 }
