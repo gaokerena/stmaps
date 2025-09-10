@@ -151,7 +151,7 @@ fetch(scriptURL)
     const lc = L.control.layers(null, allNomLayers, { collapsed: false }).addTo(map);
     map._layersControl = lc;
 
-    // ---- Non-exclusive checkboxes for categories, checked by default ----
+    // ---- Non-exclusive checkboxes for categories ----
     const container = document.getElementById("category-filters");
     Object.keys(categoryGroups).forEach(cat => {
       const label = document.createElement("label");
@@ -160,8 +160,9 @@ fetch(scriptURL)
       input.type = "checkbox";
       input.name = "category";
       input.value = cat;
-      input.checked = true; // ✅ checked by default
+      input.checked = true; // can remain checked initially
 
+      // Non-exclusive: no code to uncheck others
       input.addEventListener("change", () => {
         const overlaysContainer = document.querySelector('.leaflet-control-layers-overlays');
         if (!overlaysContainer) return;
