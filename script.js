@@ -57,15 +57,13 @@ map.on("click", e => {
 // ---- Button Event Listeners ----
 document.addEventListener("click", e => {
   if (e.target.id === "clearBtn" || e.target.id === "copyBtn") {
-    L.DomEvent.stopPropagation(e); // Prevent map click
+    L.DomEvent.stopPropagation(e);
   }
-
   if (e.target.id === "clearBtn") {
     clickCoords = [];
     clickMarkers.clearLayers();
     clickedCoordsBox.update();
   }
-
   if (e.target.id === "copyBtn") {
     navigator.clipboard.writeText(JSON.stringify(clickCoords))
       .then(() => alert("Coordinates copied to clipboard!"))
@@ -78,6 +76,7 @@ fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
     const categoryGroups = {}; // {Catégorie: {Nom: layer}}
+    const allNomLayers = {}; // Flat object {Nom: layer} for the layer control
     let allFeatures = [];
 
     data.forEach(item => {
@@ -139,18 +138,26 @@ fetch(scriptURL)
         { sticky: true }
       );
 
+      // Add to map
+      nomLayer.addTo(map);
+
+      // Add to categoryGroups
       if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
       categoryGroups[categoryName][nomName] = nomLayer;
 
-      // Add all layers to the map immediately
-      nomLayer.addTo(map);
+      // Add to flat layer control object
+      allNomLayers[nomName] = nomLayer;
     });
+
+    // ---- Build single layer control with all Nom layers ----
+    const lc = L.control.layers(null, allNomLayers, { collapsed: false }).addTo(map);
+    map._layersControl = lc;
 
     // ---- Build exclusive checkboxes for categories ----
     const container = document.getElementById("category-filters");
-
     Object.keys(categoryGroups).forEach(cat => {
       const label = document.createElement("label");
+      label.style.marginRight = "10px";
       const input = document.createElement("input");
       input.type = "checkbox";
       input.name = "category";
@@ -162,21 +169,16 @@ fetch(scriptURL)
           if (cb !== input) cb.checked = false;
         });
 
-        // Remove existing layer control if exists
-        if (map._layersControl) {
-          map.removeControl(map._layersControl);
-        }
+        // Only show menu entries of selected category
+        const overlaysContainer = document.querySelector('.leaflet-control-layers-overlays');
+        if (!overlaysContainer) return;
 
-        // Build Leaflet layer control for selected category Nom layers only
-        const overlays = {};
-        if (input.checked) {
-          Object.entries(categoryGroups[cat]).forEach(([nom, layer]) => {
-            overlays[nom] = layer;
-          });
-        }
-
-        const lc = L.control.layers(null, overlays, { collapsed: false }).addTo(map);
-        map._layersControl = lc;
+        overlaysContainer.querySelectorAll('label').forEach(label => {
+          const span = label.querySelector('span');
+          const layerName = span ? span.textContent : '';
+          const isInCategory = input.checked && categoryGroups[cat][layerName];
+          label.style.display = isInCategory ? "" : "none";
+        });
       });
 
       label.appendChild(input);
