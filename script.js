@@ -29,43 +29,39 @@ clickedCoordsBox.onAdd = function () {
   return this._div;
 };
 clickedCoordsBox.update = function () {
-  this._div.innerHTML = `<strong>Clicked:</strong><br/><pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
+  // Remove outer brackets
+  const stripped = JSON.stringify(clickCoords).replace(/^\[|\]$/g, '');
+  this._div.innerHTML = `<strong>Clicked:</strong> <pre style="white-space: pre-wrap; max-width:60%;">${stripped}</pre>`;
 };
 clickedCoordsBox.addTo(map);
 
-// ---- Buttons Control ----
-const buttonsControl = L.control({ position: "topleft" });
-buttonsControl.onAdd = function () {
-  const container = L.DomUtil.create("div", "info button-box");
-
-  // Add buttons
-  const clearBtn = document.createElement("button");
-  clearBtn.id = "clearBtn";
-  clearBtn.textContent = "Clear";
-  clearBtn.onclick = e => {
-    L.DomEvent.stopPropagation(e); // Prevent map click
-    clickCoords = [];
-    clickMarkers.clearLayers();
-    clickedCoordsBox.update();
-  };
-
-  const copyBtn = document.createElement("button");
-  copyBtn.id = "copyBtn";
-  copyBtn.textContent = "Copy";
-  copyBtn.onclick = e => {
-    L.DomEvent.stopPropagation(e); // Prevent map click
-    navigator.clipboard.writeText(JSON.stringify(clickCoords))
-      .then(() => alert("Coordinates copied to clipboard!"))
-      .catch(err => console.error("Copy failed", err));
-  };
-
-  container.appendChild(clearBtn);
-  container.appendChild(copyBtn);
-  return container;
+// ---- Buttons ----
+const clearBtn = L.DomUtil.create('button', '');
+clearBtn.textContent = 'Clear';
+clearBtn.onclick = e => {
+  L.DomEvent.stopPropagation(e);
+  clickCoords = [];
+  clickMarkers.clearLayers();
+  clickedCoordsBox.update();
 };
-buttonsControl.addTo(map);
+const copyBtn = L.DomUtil.create('button', '');
+copyBtn.textContent = 'Copy';
+copyBtn.onclick = e => {
+  L.DomEvent.stopPropagation(e);
+  navigator.clipboard.writeText(JSON.stringify(clickCoords))
+    .then(() => alert("Coordinates copied!"))
+    .catch(err => console.error("Copy failed", err));
+};
+const buttonsContainer = L.control({ position: "topleft" });
+buttonsContainer.onAdd = function () {
+  const div = L.DomUtil.create("div", "info button-box");
+  div.appendChild(clearBtn);
+  div.appendChild(copyBtn);
+  return div;
+};
+buttonsContainer.addTo(map);
 
-// ---- Map Click Handler ----
+// ---- Map click handler ----
 map.on("click", e => {
   const point = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
   clickCoords.push(point);
@@ -73,11 +69,11 @@ map.on("click", e => {
   L.circleMarker(e.latlng, { radius: 4, color: "red" }).addTo(clickMarkers);
 });
 
-// ---- Fetch Data + Build Layers by Category ----
+// ---- Fetch data + build layers ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    const categoryGroups = {}; // {Catégorie: {Nom: layer}}
+    const categoryGroups = {};
     let allFeatures = [];
 
     data.forEach(item => {
@@ -89,6 +85,7 @@ fetch(scriptURL)
       ];
 
       let combined = null;
+
       pairs.forEach(([p, intp]) => {
         if (!p) return;
 
@@ -96,13 +93,12 @@ fetch(scriptURL)
         let featureInt = intp ? buildFeature(intp) : null;
 
         if (!featureP) return;
-
         let currentShape = featureP;
+
         if (featureInt) {
           try {
             const inter = turf.intersect(featureP, featureInt);
             if (inter) currentShape = inter;
-            else return;
           } catch (err) { return; }
         }
 
@@ -118,78 +114,61 @@ fetch(scriptURL)
 
       // Normalize color
       let color = (item.couleur || "").trim();
-      if (color.startsWith('"') && color.endsWith('"')) color = color.slice(1, -1);
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      const categoryName = (item.categorie || "").trim();
-      const nomName = (item.nom || "").trim();
-      if (!categoryName || !nomName) return;
+      const categoryName = item.categorie || "Unknown";
+      const nomName = item.nom || "Layer";
 
-      const nomLayer = L.geoJSON(combined, {
+      if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
+      const layer = L.geoJSON(combined, {
         color: color,
         fillColor: color,
         weight: 2,
         fillOpacity: 0.3
-      }).bindTooltip(
-        `<strong>${item.nom}</strong><br/>Plancher: ${item.plancher}<br/>Plafond: ${item.plafond}`,
-        { sticky: true }
-      );
+      }).bindTooltip(`<strong>${item.nom}</strong><br/>Plancher: ${item.plancher}<br/>Plafond: ${item.plafond}`, { sticky: true });
 
-      if (!categoryGroups[categoryName]) categoryGroups[categoryName] = {};
-      categoryGroups[categoryName][nomName] = nomLayer;
+      categoryGroups[categoryName][nomName] = layer;
     });
 
-    // ---- Leaflet Panel Layers Menu ----
+    // ---- Panel layers ----
     const baseLayers = {};
-    const groupedOverlays = Object.keys(categoryGroups).map(cat => ({
+    const overlays = Object.entries(categoryGroups).map(([cat, layers]) => ({
       group: cat,
-      layers: Object.entries(categoryGroups[cat]).map(([nom, layer]) => ({
-        name: nom,
-        layer: layer
-      }))
+      layers: Object.entries(layers).map(([name, layer]) => ({ name, layer }))
     }));
+    new L.Control.PanelLayers(baseLayers, overlays, { collapsibleGroups: true }).addTo(map);
 
-    const panelLayers = new L.Control.PanelLayers(baseLayers, groupedOverlays, {
-      collapsibleGroups: true,
-      collapsed: false
-    });
-    map.addControl(panelLayers);
-
-    // Fit map to all features
+    // Fit map
     if (allFeatures.length > 0) {
       const fc = turf.featureCollection(allFeatures);
       const bbox = turf.bbox(fc);
-      map.fitBounds([[bbox[1], bbox[0]], [bbox[3], bbox[2]]]);
+      if (bbox.every(n => typeof n === "number")) map.fitBounds([[bbox[1], bbox[0]], [bbox[3], bbox[2]]]);
     }
   })
   .catch(err => console.error("Error fetching data:", err));
 
-// ---- Build Feature from JSON string and normalize numbers ----
+// ---- Build feature with auto-wrapping ----
 function buildFeature(obj) {
   try {
     const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
 
-    function normalizeCoords(coords) {
-      return coords.map(c => {
-        if (Array.isArray(c[0])) return normalizeCoords(c);
-        return c.map(Number);
-      });
-    }
+    // Circle
+    if (parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options);
 
+    // Array of coordinates
     if (Array.isArray(parsed)) {
-      const coords = normalizeCoords(parsed);
-      // Single coordinate = point
-      if (coords.length === 1 && coords[0].length === 2) return turf.point(coords[0]);
-      // Line if multiple coords and not closed
-      if (coords.length > 1 && (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1])) {
-        return turf.lineString(coords);
+      if (parsed.length === 1 || (parsed[0].length === 2 && parsed.length === 1)) {
+        // Single point
+        return turf.point(parsed[0]);
+      } else if (parsed[0].length === 2 && parsed[parsed.length-1][0] !== parsed[0][0] || parsed[parsed.length-1][1] !== parsed[0][1]) {
+        // Line
+        return turf.lineString(parsed);
+      } else {
+        // Polygon
+        const poly = Array.isArray(parsed[0][0]) ? parsed : [parsed];
+        return turf.polygon(poly);
       }
-      return turf.polygon(coords);
-    }
-
-    if (parsed.center && parsed.radius) {
-      return turf.circle(parsed.center.map(Number), parsed.radius, parsed.options || {});
     }
   } catch (err) {
     console.warn("Invalid geometry:", obj, err);
