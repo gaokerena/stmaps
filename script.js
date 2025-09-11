@@ -84,22 +84,23 @@ fetch(scriptURL)
     let allFeatures = [];
 
     data.forEach(item => {
-      const pairs = [
-        [item.p1, item.intp1],
-        [item.p2, item.intp2],
-        [item.p3, item.intp3],
-        [item.p4, item.intp4]
+      const quads = [
+        [item.p1, item.intp1, item.exp1],
+        [item.p2, item.intp2, item.exp2],
+        [item.p3, item.intp3, item.exp3],
+        [item.p4, item.intp4, item.exp4]
       ];
 
       let combined = null;
 
-      pairs.forEach(([geom, intGeom]) => {
+      quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
         let feature = parseGeometry(geom);
         if (!feature) return;
 
+        // Intersection
         if (intGeom) {
-          let intFeature = parseGeometry(intGeom);
+          const intFeature = parseGeometry(intGeom);
           if (intFeature) {
             try {
               const intersection = turf.intersect(feature, intFeature);
@@ -110,6 +111,21 @@ fetch(scriptURL)
           }
         }
 
+        // Exclusion / difference
+        if (expGeom) {
+          const expFeature = parseGeometry(expGeom);
+          if (expFeature) {
+            try {
+              const diff = turf.difference(feature, expFeature);
+              if (diff) feature = diff;
+              else return; // completely excluded
+            } catch (e) {
+              console.warn("Difference failed", e);
+            }
+          }
+        }
+
+        // Union with previous
         if (!combined) combined = feature;
         else {
           try {
@@ -123,6 +139,7 @@ fetch(scriptURL)
       if (!combined) return;
       allFeatures.push(combined);
 
+      // ---- Coloring & Layer ----
       let color = (item.couleur || "").trim();
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
@@ -145,6 +162,7 @@ fetch(scriptURL)
       categoryGroups[category][nom] = layer;
     });
 
+    // ---- Build Leaflet Panel Layers ----
     const overlays = [];
     Object.entries(categoryGroups).forEach(([cat, nomLayers]) => {
       const layersArray = Object.entries(nomLayers).map(([nom, layer]) => ({ name: nom, layer }));
@@ -154,6 +172,7 @@ fetch(scriptURL)
     const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
 
+    // ---- Fit map to all features ----
     if (allFeatures.length > 0) {
       const fc = turf.featureCollection(allFeatures);
       const bbox = turf.bbox(fc);
