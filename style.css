@@ -19,14 +19,18 @@ body {
   font-size: 14px;
 }
 
-/* Clicked coordinates box styling */
+/* Clicked coordinates box styling - horizontal wrap */
 .info.clicked-coords {
   max-width: 60%;
 }
 .info.clicked-coords pre {
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  display: flex;
+  flex-wrap: wrap;        /* allow coordinates to wrap horizontally */
+  gap: 8px;               /* space between coordinates */
   margin: 0;
+  white-space: normal;    /* allow wrapping inside */
+  font-family: monospace; /* keep coordinates aligned */
+  font-size: 13px;
 }
 
 /* Button box styling */
