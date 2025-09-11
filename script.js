@@ -33,33 +33,38 @@ clickedCoordsBox.update = function () {
 };
 clickedCoordsBox.addTo(map);
 
-// ---- Buttons (inside a Leaflet control) ----
-const buttonBox = L.control({ position: "topleft" }); // ✅ top-left corner
+// ---- Buttons (inside Leaflet control) ----
+const buttonBox = L.control({ position: "topleft" });
 buttonBox.onAdd = function () {
   const div = L.DomUtil.create("div", "info button-box");
   div.innerHTML = `
     <button id="clearBtn">Clear</button>
     <button id="copyBtn">Copy</button>
   `;
+
+  // Prevent clicks on buttons from propagating to the map
+  div.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", e => e.stopPropagation());
+  });
+
   return div;
 };
 buttonBox.addTo(map);
 
-// Button listeners
-document.addEventListener("click", e => {
-  if (e.target.id === "clearBtn") {
-    clickCoords = [];
-    clickMarkers.clearLayers();
-    clickedCoordsBox.update();
-  }
-  if (e.target.id === "copyBtn") {
-    navigator.clipboard.writeText(JSON.stringify(clickCoords, null, 2))
-      .then(() => alert("Coordinates copied!"))
-      .catch(err => console.error(err));
-  }
+// ---- Button Listeners ----
+document.getElementById("clearBtn").addEventListener("click", () => {
+  clickCoords = [];
+  clickMarkers.clearLayers();
+  clickedCoordsBox.update();
 });
 
-// ---- Capture Clicks ----
+document.getElementById("copyBtn").addEventListener("click", () => {
+  navigator.clipboard.writeText(JSON.stringify(clickCoords, null, 2))
+    .then(() => alert("Coordinates copied!"))
+    .catch(err => console.error(err));
+});
+
+// ---- Capture Clicks on Map ----
 map.on("click", e => {
   clickCoords.push([e.latlng.lng, e.latlng.lat]);
   L.marker(e.latlng).addTo(clickMarkers);
@@ -85,6 +90,7 @@ fetch(scriptURL)
         [item.p3, item.intp3],
         [item.p4, item.intp4]
       ];
+
       let combined = null;
 
       pairs.forEach(([geom, intGeom]) => {
@@ -117,7 +123,6 @@ fetch(scriptURL)
       if (!combined) return;
       allFeatures.push(combined);
 
-      // Normalize color
       let color = (item.couleur || "").trim();
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
@@ -140,22 +145,15 @@ fetch(scriptURL)
       categoryGroups[category][nom] = layer;
     });
 
-    // ---- Build Leaflet Panel Layers ----
     const overlays = [];
     Object.entries(categoryGroups).forEach(([cat, nomLayers]) => {
-      const layersArray = Object.entries(nomLayers).map(([nom, layer]) => ({
-        name: nom,
-        layer
-      }));
+      const layersArray = Object.entries(nomLayers).map(([nom, layer]) => ({ name: nom, layer }));
       overlays.push({ group: cat, layers: layersArray });
     });
 
-    const panelLayers = new L.Control.PanelLayers(null, overlays, {
-      collapsibleGroups: true
-    });
+    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
 
-    // ---- Fit map to all features ----
     if (allFeatures.length > 0) {
       const fc = turf.featureCollection(allFeatures);
       const bbox = turf.bbox(fc);
@@ -184,8 +182,7 @@ function parseGeometry(obj) {
         return turf.point(parsed);
 
       if (parsed.length > 1 && Array.isArray(parsed[0])) {
-        const first = parsed[0],
-          last = parsed[parsed.length - 1];
+        const first = parsed[0], last = parsed[parsed.length - 1];
         const isPolygon = first[0] === last[0] && first[1] === last[1];
         if (isPolygon) return turf.polygon([parsed]);
         return turf.lineString(parsed);
