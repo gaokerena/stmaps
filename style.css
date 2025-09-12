@@ -27,11 +27,11 @@ body {
 }
 .info.clicked-coords pre {
   display: flex;
-  flex-wrap: wrap;        /* allow coordinates to wrap horizontally */
-  gap: 8px;               /* space between coordinates */
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 0;
-  white-space: normal;    /* allow wrapping inside */
-  font-family: monospace; /* keep coordinates aligned */
+  white-space: normal;
+  font-family: monospace;
   font-size: 13px;
 }
 
@@ -63,14 +63,22 @@ body {
 .navigation-marker svg {
   display: block;
   vertical-align: middle;
+  width: 16px;
+  height: 16px;
 }
 .navigation-marker svg polygon {
-  stroke: #333;      /* triangle border */
+  stroke: #333;
   stroke-width: 1;
-  fill: #ff0000;     /* triangle fill color */
+  fill: #ff0000;
 }
 .navigation-label {
   font-weight: bold;
   font-size: 13px;
   color: #333;
-  background: rgba(255, 255, 255
+  background: rgba(255, 255, 255, 0.8);
+  padding: 1px 4px;
+  border-radius: 3px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  margin-left: 4px;
+}
