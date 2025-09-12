@@ -1,4 +1,4 @@
-const scriptURL = "https://script.google.com/macros/s/AKfycbxHz5OBOFSrpRUZlKqL_5h-yk3jVJkW9wrKd2YXUm7Of-iRzY0zitxt_LGNj7jXifAW/exec";
+const scriptURL = "https://script.google.com/macros/s/AKfycbxHz5OBOFSrpRUZlKqL_5h-yk3jVJkW9wrKd2YXUm7Of-iRzY0zitxt_LGNj7XifAW/exec";
 
 const map = L.map('map').setView([48.5, 7.5], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -33,7 +33,7 @@ clickedCoordsBox.update = function () {
 };
 clickedCoordsBox.addTo(map);
 
-// ---- Buttons (inside Leaflet control) ----
+// ---- Buttons ----
 const buttonBox = L.control({ position: "topleft" });
 buttonBox.onAdd = function () {
   const div = L.DomUtil.create("div", "info button-box");
@@ -41,14 +41,11 @@ buttonBox.onAdd = function () {
     <button id="clearBtn">Clear</button>
     <button id="copyBtn">Copy</button>
   `;
-  div.querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("click", e => e.stopPropagation());
-  });
+  div.querySelectorAll("button").forEach(btn => btn.addEventListener("click", e => e.stopPropagation()));
   return div;
 };
 buttonBox.addTo(map);
 
-// ---- Button Listeners ----
 document.getElementById("clearBtn").addEventListener("click", () => {
   clickCoords = [];
   clickMarkers.clearLayers();
@@ -61,14 +58,13 @@ document.getElementById("copyBtn").addEventListener("click", () => {
     .catch(err => console.error(err));
 });
 
-// ---- Capture Clicks on Map ----
 map.on("click", e => {
   clickCoords.push([e.latlng.lng, e.latlng.lat]);
   L.marker(e.latlng).addTo(clickMarkers);
   clickedCoordsBox.update();
 });
 
-// ---- Fetch Data + Build Features ----
+// ---- Fetch Data & Build Features ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
@@ -77,8 +73,8 @@ fetch(scriptURL)
       return;
     }
 
-    const categoryGroups = {};
-    let allFeatures = [];
+    const categoryGroups = {}; // group by categorie
+    const coucheGroups = {};   // group layers by couche
 
     data.forEach(item => {
       const quads = [
@@ -88,93 +84,82 @@ fetch(scriptURL)
         [item.p4, item.intp4, item.exp4]
       ];
 
-      let features = [];
+      let combined = null;
 
       quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
         let feature = parseGeometry(geom);
         if (!feature) return;
 
-        // Intersection
         if (intGeom) {
           const intFeature = parseGeometry(intGeom);
           if (intFeature) {
             try {
               const intersection = turf.intersect(feature, intFeature);
               if (intersection) feature = intersection;
-            } catch (e) {
-              console.warn("Intersection failed", e);
-            }
+            } catch (e) { console.warn("Intersection failed", e); }
           }
         }
 
-        // Exclusion
         if (expGeom) {
           const expFeature = parseGeometry(expGeom);
           if (expFeature) {
             try {
               const diff = turf.difference(feature, expFeature);
               if (diff) feature = diff;
-              else return; // completely excluded
-            } catch (e) {
-              console.warn("Difference failed", e);
-            }
+              else return;
+            } catch (e) { console.warn("Difference failed", e); }
           }
         }
 
-        features.push(feature);
+        if (!combined) combined = feature;
+        else {
+          try {
+            combined = turf.union(combined, feature);
+          } catch (e) { console.warn("Union failed", e); }
+        }
       });
 
-      if (features.length === 0) return;
+      if (!combined) return;
 
       let color = (item.couleur || "").trim();
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      const layer = L.geoJSON(features, {
+      const category = (item.categorie || "").trim();
+      const couche = (item.couche || "Default").trim();
+      const nom = (item.nom || "Shape").trim();
+      if (!category) return;
+
+      const layer = L.geoJSON(combined, {
         color,
         fillColor: color,
         weight: 2,
         fillOpacity: 0.3
       }).bindTooltip(
-        `<strong>${item.nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,
+        `<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,
         { sticky: true }
       );
 
-      allFeatures.push(...features);
-
-      const cat = (item.categorie || "").trim();
-      const couche = (item.couche || "").trim();
-      if (!cat || !couche) return;
-
-      if (!categoryGroups[cat]) categoryGroups[cat] = {};
-      if (!categoryGroups[cat][couche]) categoryGroups[cat][couche] = L.layerGroup();
-
-      categoryGroups[cat][couche].addLayer(layer);
+      // Group by category
+      if (!categoryGroups[category]) categoryGroups[category] = {};
+      // Group by couche (layer name)
+      if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
+      categoryGroups[category][couche].push(layer);
     });
 
-    // ---- Build Leaflet Panel Layers ----
+    // ---- Build Panel Layers ----
     const overlays = [];
     Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
-      const layersArray = Object.entries(coucheLayers).map(([couche, group]) => ({
-        name: couche,
-        layer: group
-      }));
+      const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
+        const groupLayer = L.layerGroup(shapes);
+        return { name: couche, layer: groupLayer };
+      });
       overlays.push({ group: cat, layers: layersArray });
     });
 
     const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
-
-    // ---- Fit map to all features ----
-    if (allFeatures.length > 0) {
-      const fc = turf.featureCollection(allFeatures);
-      const bbox = turf.bbox(fc);
-      map.fitBounds([
-        [bbox[1], bbox[0]],
-        [bbox[3], bbox[2]]
-      ]);
-    }
   })
   .catch(err => {
     console.error("Error fetching data:", err);
@@ -186,7 +171,6 @@ function parseGeometry(obj) {
   if (!obj) return null;
   try {
     const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-
     if (parsed.center && parsed.radius)
       return turf.circle(parsed.center, parsed.radius, parsed.options || {});
 
@@ -196,13 +180,11 @@ function parseGeometry(obj) {
 
       if (parsed.length > 1 && Array.isArray(parsed[0])) {
         const first = parsed[0], last = parsed[parsed.length - 1];
-        const isPolygon = first[0] === last[0] && first[1] === last[1];
-        if (isPolygon) return turf.polygon([parsed]);
+        if (first[0] === last[0] && first[1] === last[1])
+          return turf.polygon([parsed]);
         return turf.lineString(parsed);
       }
     }
-  } catch (e) {
-    console.warn("Invalid geometry:", obj, e);
-  }
+  } catch (e) { console.warn("Invalid geometry:", obj, e); }
   return null;
 }
