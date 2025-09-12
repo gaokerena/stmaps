@@ -89,11 +89,11 @@ fetch(scriptURL)
         if (coords && coords.geometry && coords.geometry.coordinates) {
           const [lng, lat] = coords.geometry.coordinates;
           const triangleIcon = L.divIcon({
-            className: "waypoint-marker",
+            className: "navigation-marker",
             html: `<svg width="16" height="16">
-                     <polygon points="8,0 16,16 0,16" fill="#f00" />
+                     <polygon points="8,0 16,16 0,16" />
                    </svg>
-                   <span class="waypoint-label">${item.nom}</span>`,
+                   <span class="navigation-label">${item.nom}</span>`,
             iconAnchor: [8, 8]
           });
           L.marker([lat, lng], { icon: triangleIcon }).addTo(map);
@@ -108,6 +108,7 @@ fetch(scriptURL)
         let feature = parseGeometry(geom);
         if (!feature) return;
 
+        // Intersection
         if (intGeom) {
           const intFeature = parseGeometry(intGeom);
           if (intFeature) {
@@ -118,6 +119,7 @@ fetch(scriptURL)
           }
         }
 
+        // Exclusion
         if (expGeom) {
           const expFeature = parseGeometry(expGeom);
           if (expFeature) {
@@ -129,6 +131,7 @@ fetch(scriptURL)
           }
         }
 
+        // Union
         if (!combined) combined = feature;
         else {
           try {
