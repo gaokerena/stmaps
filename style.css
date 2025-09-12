@@ -1,3 +1,4 @@
+/* ---------- General Body & Map ---------- */
 body {
   font-family: Arial, sans-serif;
   margin: 0;
@@ -9,6 +10,7 @@ body {
   width: 100%;
 }
 
+/* ---------- Info Boxes ---------- */
 .info.mouse-coords,
 .info.clicked-coords,
 .info.button-box {
@@ -33,7 +35,7 @@ body {
   font-size: 13px;
 }
 
-/* Button box styling */
+/* ---------- Button Box ---------- */
 .info.button-box {
   display: flex;
   gap: 5px;
@@ -52,23 +54,23 @@ body {
   background-color: #0056b3;
 }
 
-/* Waypoint triangle marker styling */
-.waypoint-marker {
+/* ---------- Navigation Marker Styling ---------- */
+.navigation-marker {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.waypoint-label {
+.navigation-marker svg {
+  display: block;
+  vertical-align: middle;
+}
+.navigation-marker svg polygon {
+  stroke: #333;      /* triangle border */
+  stroke-width: 1;
+  fill: #ff0000;     /* triangle fill color */
+}
+.navigation-label {
   font-weight: bold;
   font-size: 13px;
   color: #333;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 1px 4px;
-  border-radius: 3px;
-  box-shadow: 0 0 2px rgba(0,0,0,0.3);
-  white-space: nowrap;
-}
-.waypoint-marker svg polygon {
-  stroke: #333;      /* triangle border */
-  stroke-width: 1;
-}
+  background: rgba(255, 255, 255
