@@ -158,7 +158,7 @@ fetch(scriptURL)
       overlays.push({ group: cat, layers: layersArray });
     });
 
-    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
+    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true, collapsed: true });
     map.addControl(panelLayers);
   })
   .catch(err => {
