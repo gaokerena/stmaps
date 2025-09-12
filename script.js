@@ -76,6 +76,39 @@ fetch(scriptURL)
     const categoryGroups = {}; // group by catégorie
 
     data.forEach(item => {
+      const category = (item.categorie || "").trim();
+      const couche = (item.couche || "Default").trim();
+      const nom = (item.nom || "Shape").trim();
+      let color = (item.couleur || "").trim();
+      if (color && color[0] !== "#") color = "#" + color;
+      if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
+      if (!category) return;
+
+      // ---- Special case: Waypoints ----
+      if (category === "Waypoint" && item.p1) {
+        const coords = parseGeometry(item.p1);
+        if (coords) {
+          // Custom triangle marker
+          const triangleIcon = L.divIcon({
+            className: 'waypoint-marker',
+            html: `<svg width="16" height="16" viewBox="0 0 10 10">
+                     <polygon points="5,0 10,10 0,10" fill="${color}" />
+                   </svg>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+          });
+          const marker = L.marker([coords.geometry.coordinates[1], coords.geometry.coordinates[0]], { icon: triangleIcon });
+          marker.bindTooltip(nom, { permanent: true, direction: 'right', offset: [10,0], className: 'waypoint-label' });
+          
+          // Add marker to a category group
+          if (!categoryGroups[category]) categoryGroups[category] = {};
+          if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
+          categoryGroups[category][couche].push(marker);
+        }
+        return; // skip normal polygon logic
+      }
+
+      // ---- Normal polygon shapes ----
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
@@ -90,7 +123,6 @@ fetch(scriptURL)
         let feature = parseGeometry(geom);
         if (!feature) return;
 
-        // Intersection
         if (intGeom) {
           const intFeature = parseGeometry(intGeom);
           if (intFeature) {
@@ -101,19 +133,17 @@ fetch(scriptURL)
           }
         }
 
-        // Exclusion
         if (expGeom) {
           const expFeature = parseGeometry(expGeom);
           if (expFeature) {
             try {
               const diff = turf.difference(feature, expFeature);
               if (diff) feature = diff;
-              else return; // fully excluded
+              else return;
             } catch (e) { console.warn("Difference failed", e); }
           }
         }
 
-        // Union
         if (!combined) combined = feature;
         else {
           try {
@@ -123,15 +153,6 @@ fetch(scriptURL)
       });
 
       if (!combined) return;
-
-      let color = (item.couleur || "").trim();
-      if (color && color[0] !== "#") color = "#" + color;
-      if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
-
-      const category = (item.categorie || "").trim();
-      const couche = (item.couche || "Default").trim();
-      const nom = (item.nom || "Shape").trim();
-      if (!category) return;
 
       const layer = L.geoJSON(combined, {
         color,
@@ -143,25 +164,23 @@ fetch(scriptURL)
         { sticky: true }
       );
 
-      // Group by category then couche
       if (!categoryGroups[category]) categoryGroups[category] = {};
       if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
       categoryGroups[category][couche].push(layer);
     });
 
-    // ---- Build Panel Layers with collapsed groups ----
+    // ---- Build Panel Layers ----
     const overlays = [];
     Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
       const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
-        const groupLayer = L.layerGroup(shapes); // not added to map initially
+        const groupLayer = L.layerGroup(shapes);
         return { name: couche, layer: groupLayer };
       });
-      overlays.push({ group: cat, layers: layersArray, collapsed: true }); // panel layers library respects this for group headers
+      overlays.push({ group: cat, layers: layersArray });
     });
 
     const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
-
   })
   .catch(err => {
     console.error("Error fetching data:", err);
