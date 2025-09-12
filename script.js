@@ -96,7 +96,7 @@ fetch(scriptURL)
                      <polygon points="8,0 16,16 0,16" fill="${color}" stroke="#333" stroke-width="1"/>
                    </svg>
                    <span class="navigation-label">${nom}</span>`,
-            iconSize: [16, 16],
+            iconSize: [120, 16],   // enough width for label
             iconAnchor: [8, 8],
           });
 
@@ -147,9 +147,8 @@ fetch(scriptURL)
 
         if (!combined) combined = feature;
         else {
-          try {
-            combined = turf.union(combined, feature);
-          } catch (e) { console.warn("Union failed", e); }
+          try { combined = turf.union(combined, feature); }
+          catch (e) { console.warn("Union failed", e); }
         }
       });
 
