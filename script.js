@@ -84,7 +84,7 @@ fetch(scriptURL)
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
       if (!category) return;
 
-      // ---- Navigation markers (triangle with label) ----
+      // ---- Navigation markers (triangle + label) ----
       if (category === "Navigation" && item.p1) {
         const coords = parseGeometry(item.p1);
         if (coords && coords.geometry && coords.geometry.coordinates) {
@@ -106,7 +106,7 @@ fetch(scriptURL)
           if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
           categoryGroups[category][couche].push(marker);
         }
-        return; // skip normal polygon logic
+        return;
       }
 
       // ---- Normal polygon shapes ----
