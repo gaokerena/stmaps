@@ -84,26 +84,29 @@ fetch(scriptURL)
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
       if (!category) return;
 
-      // ---- Special case: Navigation ----
+      // ---- Navigation markers (triangle with label) ----
       if (category === "Navigation" && item.p1) {
         const coords = parseGeometry(item.p1);
-        if (coords) {
+        if (coords && coords.geometry && coords.geometry.coordinates) {
+          const [lng, lat] = coords.geometry.coordinates;
+
           const triangleIcon = L.divIcon({
             className: 'navigation-marker',
             html: `<svg width="16" height="16" viewBox="0 0 10 10">
-                     <polygon points="5,0 10,10 0,10" fill="${color}" />
+                     <polygon points="5,0 10,10 0,10" fill="${color}" stroke="#333" stroke-width="1"/>
                    </svg>
                    <span class="navigation-label">${nom}</span>`,
             iconSize: [16, 16],
             iconAnchor: [8, 8],
           });
-          const marker = L.marker([coords.geometry.coordinates[1], coords.geometry.coordinates[0]], { icon: triangleIcon });
+
+          const marker = L.marker([lat, lng], { icon: triangleIcon });
 
           if (!categoryGroups[category]) categoryGroups[category] = {};
           if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
           categoryGroups[category][couche].push(marker);
         }
-        return; // skip polygon logic
+        return; // skip normal polygon logic
       }
 
       // ---- Normal polygon shapes ----
@@ -115,6 +118,7 @@ fetch(scriptURL)
       ];
 
       let combined = null;
+
       quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
         let feature = parseGeometry(geom);
