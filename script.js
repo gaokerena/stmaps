@@ -73,136 +73,47 @@ fetch(scriptURL)
       return;
     }
 
-    const categoryGroups = {};
+    const categoryGroups = {}; // group by catégorie
 
     data.forEach(item => {
-      const quads = [
-        [item.p1, item.intp1, item.exp1],
-        [item.p2, item.intp2, item.exp2],
-        [item.p3, item.intp3, item.exp3],
-        [item.p4, item.intp4, item.exp4]
-      ];
-
-      // ---- Navigation markers ----
-      if ((item.categorie || "").trim() === "Navigation") {
-        const coords = parseGeometry(item.p1); // assume p1 has the point
-        if (coords && coords.geometry && coords.geometry.coordinates) {
-          const [lng, lat] = coords.geometry.coordinates;
-          const triangleIcon = L.divIcon({
-            className: "navigation-marker",
-            html: `<svg width="16" height="16">
-                     <polygon points="8,0 16,16 0,16" />
-                   </svg>
-                   <span class="navigation-label">${item.nom}</span>`,
-            iconAnchor: [8, 8]
-          });
-          L.marker([lat, lng], { icon: triangleIcon }).addTo(map);
-        }
-        return; // skip further processing
-      }
-
-      // ---- Other features ----
-      let combined = null;
-      quads.forEach(([geom, intGeom, expGeom]) => {
-        if (!geom) return;
-        let feature = parseGeometry(geom);
-        if (!feature) return;
-
-        // Intersection
-        if (intGeom) {
-          const intFeature = parseGeometry(intGeom);
-          if (intFeature) {
-            try {
-              const intersection = turf.intersect(feature, intFeature);
-              if (intersection) feature = intersection;
-            } catch (e) { console.warn("Intersection failed", e); }
-          }
-        }
-
-        // Exclusion
-        if (expGeom) {
-          const expFeature = parseGeometry(expGeom);
-          if (expFeature) {
-            try {
-              const diff = turf.difference(feature, expFeature);
-              if (diff) feature = diff;
-              else return;
-            } catch (e) { console.warn("Difference failed", e); }
-          }
-        }
-
-        // Union
-        if (!combined) combined = feature;
-        else {
-          try {
-            combined = turf.union(combined, feature);
-          } catch (e) { console.warn("Union failed", e); }
-        }
-      });
-
-      if (!combined) return;
-
-      let color = (item.couleur || "").trim();
-      if (color && color[0] !== "#") color = "#" + color;
-      if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
-
       const category = (item.categorie || "").trim();
       const couche = (item.couche || "Default").trim();
       const nom = (item.nom || "Shape").trim();
       if (!category) return;
 
-      const layer = L.geoJSON(combined, {
-        color,
-        fillColor: color,
-        weight: 2,
-        fillOpacity: 0.3
-      }).bindTooltip(
-        `<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,
-        { sticky: true }
-      );
+      // ---- Waypoint special case ----
+      if (category === "Waypoint") {
+        const coords = parseGeometry(item.p1);
+        if (!coords) return;
 
-      if (!categoryGroups[category]) categoryGroups[category] = {};
-      if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
-      categoryGroups[category][couche].push(layer);
-    });
+        const triangleIcon = L.divIcon({
+          className: 'triangle-marker',
+          html: `<div></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        });
 
-    // ---- Build Panel Layers with collapsed categories ----
-    const overlays = [];
-    Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
-      const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
-        const groupLayer = L.layerGroup(shapes);
-        return { name: couche, layer: groupLayer };
-      });
-      overlays.push({ group: cat, layers: layersArray, collapsed: true }); // collapse each category
-    });
+        const marker = L.marker([coords.geometry.coordinates[1], coords.geometry.coordinates[0]], { icon: triangleIcon });
 
-    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
-    map.addControl(panelLayers);
-  })
-  .catch(err => {
-    console.error("Error fetching data:", err);
-    alert("Failed to load map data.");
-  });
+        const label = L.divIcon({
+          className: 'waypoint-label',
+          html: `<span>${nom}</span>`,
+          iconAnchor: [-5, 15],
+          interactive: false
+        });
 
-// ---- Universal Geometry Parser ----
-function parseGeometry(obj) {
-  if (!obj) return null;
-  try {
-    const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-    if (parsed.center && parsed.radius)
-      return turf.circle(parsed.center, parsed.radius, parsed.options || {});
+        const labelMarker = L.marker([coords.geometry.coordinates[1], coords.geometry.coordinates[0]], { icon: label });
 
-    if (Array.isArray(parsed)) {
-      if (parsed.length === 2 && typeof parsed[0] === "number" && typeof parsed[1] === "number")
-        return turf.point(parsed);
+        if (!categoryGroups[category]) categoryGroups[category] = {};
+        if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
+        categoryGroups[category][couche].push(marker, labelMarker);
 
-      if (parsed.length > 1 && Array.isArray(parsed[0])) {
-        const first = parsed[0], last = parsed[parsed.length - 1];
-        if (first[0] === last[0] && first[1] === last[1])
-          return turf.polygon([parsed]);
-        return turf.lineString(parsed);
+        return; // skip normal polygon logic
       }
-    }
-  } catch (e) { console.warn("Invalid geometry:", obj, e); }
-  return null;
-}
+
+      // ---- Polygon shapes ----
+      const quads = [
+        [item.p1, item.intp1, item.exp1],
+        [item.p2, item.intp2, item.exp2],
+        [item.p3, item.intp3, item.exp3],
+        [item.p4,
