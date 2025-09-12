@@ -1,7 +1,7 @@
 const scriptURL = "https://script.google.com/macros/s/AKfycbxHz5OBOFSrpRUZlKqL_5h-yk3jVJkW9wrKd2YXUm7Of-iRzY0zitxt_LGNj7jXifAW/exec";
 
-const map = L.map("map").setView([48.5, 7.5], 8);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+const map = L.map('map').setView([48.5, 7.5], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
@@ -33,7 +33,7 @@ clickedCoordsBox.update = function () {
 };
 clickedCoordsBox.addTo(map);
 
-// ---- Buttons ----
+// ---- Buttons (inside Leaflet control) ----
 const buttonBox = L.control({ position: "topleft" });
 buttonBox.onAdd = function () {
   const div = L.DomUtil.create("div", "info button-box");
@@ -41,9 +41,9 @@ buttonBox.onAdd = function () {
     <button id="clearBtn">Clear</button>
     <button id="copyBtn">Copy</button>
   `;
-  div.querySelectorAll("button").forEach(btn =>
-    btn.addEventListener("click", e => e.stopPropagation())
-  );
+  div.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", e => e.stopPropagation());
+  });
   return div;
 };
 buttonBox.addTo(map);
@@ -56,8 +56,7 @@ document.getElementById("clearBtn").addEventListener("click", () => {
 });
 
 document.getElementById("copyBtn").addEventListener("click", () => {
-  navigator.clipboard
-    .writeText(JSON.stringify(clickCoords, null, 2))
+  navigator.clipboard.writeText(JSON.stringify(clickCoords, null, 2))
     .then(() => alert("Coordinates copied!"))
     .catch(err => console.error(err));
 });
@@ -79,7 +78,7 @@ fetch(scriptURL)
     }
 
     const categoryGroups = {};
-    const allFeatures = [];
+    let allFeatures = [];
 
     data.forEach(item => {
       const quads = [
@@ -89,7 +88,7 @@ fetch(scriptURL)
         [item.p4, item.intp4, item.exp4]
       ];
 
-      const validFeatures = [];
+      let features = [];
 
       quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
@@ -103,14 +102,13 @@ fetch(scriptURL)
             try {
               const intersection = turf.intersect(feature, intFeature);
               if (intersection) feature = intersection;
-              else return; // completely outside intersection
             } catch (e) {
               console.warn("Intersection failed", e);
             }
           }
         }
 
-        // Difference (exclusion)
+        // Exclusion
         if (expGeom) {
           const expFeature = parseGeometry(expGeom);
           if (expFeature) {
@@ -124,62 +122,51 @@ fetch(scriptURL)
           }
         }
 
-        validFeatures.push(feature);
+        features.push(feature);
       });
 
-      if (validFeatures.length === 0) return;
+      if (features.length === 0) return;
 
-      // Combine features if multiple exist
-      let combined = validFeatures[0];
-      for (let i = 1; i < validFeatures.length; i++) {
-        try {
-          combined = turf.union(combined, validFeatures[i]);
-        } catch (e) {
-          console.warn("Union failed", e);
-        }
-      }
-
-      if (!combined) return;
-      allFeatures.push(combined);
-
-      // ---- Coloring & Layer ----
       let color = (item.couleur || "").trim();
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      const category = (item.categorie || "").trim();
-      const nom = (item.nom || "").trim();
-      if (!category || !nom) return;
-
-      const layer = L.geoJSON(combined, {
+      const layer = L.geoJSON(features, {
         color,
         fillColor: color,
         weight: 2,
         fillOpacity: 0.3
       }).bindTooltip(
-        `<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,
+        `<strong>${item.nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,
         { sticky: true }
       );
 
-      if (!categoryGroups[category]) categoryGroups[category] = {};
-      categoryGroups[category][nom] = layer;
+      allFeatures.push(...features);
+
+      const cat = (item.categorie || "").trim();
+      const couche = (item.couche || "").trim();
+      if (!cat || !couche) return;
+
+      if (!categoryGroups[cat]) categoryGroups[cat] = {};
+      if (!categoryGroups[cat][couche]) categoryGroups[cat][couche] = L.layerGroup();
+
+      categoryGroups[cat][couche].addLayer(layer);
     });
 
-    // ---- Build Panel Layers ----
-    const overlays = Object.entries(categoryGroups).map(([cat, nomLayers]) => ({
-      group: cat,
-      layers: Object.entries(nomLayers).map(([nom, layer]) => ({
-        name: nom,
-        layer
-      }))
-    }));
-
-    const panelLayers = new L.Control.PanelLayers(null, overlays, {
-      collapsibleGroups: true
+    // ---- Build Leaflet Panel Layers ----
+    const overlays = [];
+    Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
+      const layersArray = Object.entries(coucheLayers).map(([couche, group]) => ({
+        name: couche,
+        layer: group
+      }));
+      overlays.push({ group: cat, layers: layersArray });
     });
+
+    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
 
-    // ---- Fit map to features ----
+    // ---- Fit map to all features ----
     if (allFeatures.length > 0) {
       const fc = turf.featureCollection(allFeatures);
       const bbox = turf.bbox(fc);
@@ -208,8 +195,7 @@ function parseGeometry(obj) {
         return turf.point(parsed);
 
       if (parsed.length > 1 && Array.isArray(parsed[0])) {
-        const first = parsed[0],
-          last = parsed[parsed.length - 1];
+        const first = parsed[0], last = parsed[parsed.length - 1];
         const isPolygon = first[0] === last[0] && first[1] === last[1];
         if (isPolygon) return turf.polygon([parsed]);
         return turf.lineString(parsed);
