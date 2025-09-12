@@ -55,7 +55,7 @@ body {
 
 /* Navigation marker (triangle + label) */
 .navigation-marker {
-  display: inline-flex;       /* inline-flex keeps triangle & text in one line */
+  display: inline-flex;
   align-items: center;
   justify-content: flex-start;
 }
@@ -77,5 +77,5 @@ body {
   border-radius: 3px;
   box-shadow: 0 0 2px rgba(0,0,0,0.3);
   white-space: nowrap;
-  margin-left: 4px;  /* space between triangle and text */
+  margin-left: 4px;
 }
