@@ -55,13 +55,14 @@ body {
 
 /* Navigation marker (triangle + label) */
 .navigation-marker {
-  display: flex;
+  display: inline-flex;       /* inline-flex keeps triangle & text in one line */
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 .navigation-marker svg {
   display: block;
-  vertical-align: middle;
+  width: 16px;
+  height: 16px;
 }
 .navigation-marker svg polygon {
   stroke: #333;
@@ -76,5 +77,5 @@ body {
   border-radius: 3px;
   box-shadow: 0 0 2px rgba(0,0,0,0.3);
   white-space: nowrap;
-  margin-left: 4px;
+  margin-left: 4px;  /* space between triangle and text */
 }
