@@ -73,7 +73,7 @@ fetch(scriptURL)
       return;
     }
 
-    const categoryGroups = {}; // group by catégorie
+    const categoryGroups = {};
 
     data.forEach(item => {
       const category = (item.categorie || "").trim();
@@ -84,28 +84,26 @@ fetch(scriptURL)
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
       if (!category) return;
 
-      // ---- Special case: Waypoints ----
-      if (category === "Waypoint" && item.p1) {
+      // ---- Special case: Navigation ----
+      if (category === "Navigation" && item.p1) {
         const coords = parseGeometry(item.p1);
         if (coords) {
-          // Custom triangle marker
           const triangleIcon = L.divIcon({
-            className: 'waypoint-marker',
+            className: 'navigation-marker',
             html: `<svg width="16" height="16" viewBox="0 0 10 10">
                      <polygon points="5,0 10,10 0,10" fill="${color}" />
-                   </svg>`,
+                   </svg>
+                   <span class="navigation-label">${nom}</span>`,
             iconSize: [16, 16],
             iconAnchor: [8, 8],
           });
           const marker = L.marker([coords.geometry.coordinates[1], coords.geometry.coordinates[0]], { icon: triangleIcon });
-          marker.bindTooltip(nom, { permanent: true, direction: 'right', offset: [10,0], className: 'waypoint-label' });
-          
-          // Add marker to a category group
+
           if (!categoryGroups[category]) categoryGroups[category] = {};
           if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
           categoryGroups[category][couche].push(marker);
         }
-        return; // skip normal polygon logic
+        return; // skip polygon logic
       }
 
       // ---- Normal polygon shapes ----
@@ -117,7 +115,6 @@ fetch(scriptURL)
       ];
 
       let combined = null;
-
       quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
         let feature = parseGeometry(geom);
@@ -176,7 +173,7 @@ fetch(scriptURL)
         const groupLayer = L.layerGroup(shapes);
         return { name: couche, layer: groupLayer };
       });
-      overlays.push({ group: cat, layers: layersArray });
+      overlays.push({ group: cat, layers: layersArray, collapsed: true });
     });
 
     const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
