@@ -73,7 +73,7 @@ fetch(scriptURL)
       return;
     }
 
-    const categoryGroups = {}; // group by category
+    const categoryGroups = {}; // group by catégorie
 
     data.forEach(item => {
       const quads = [
@@ -90,6 +90,7 @@ fetch(scriptURL)
         let feature = parseGeometry(geom);
         if (!feature) return;
 
+        // Intersection
         if (intGeom) {
           const intFeature = parseGeometry(intGeom);
           if (intFeature) {
@@ -100,17 +101,19 @@ fetch(scriptURL)
           }
         }
 
+        // Exclusion
         if (expGeom) {
           const expFeature = parseGeometry(expGeom);
           if (expFeature) {
             try {
               const diff = turf.difference(feature, expFeature);
               if (diff) feature = diff;
-              else return;
+              else return; // fully excluded
             } catch (e) { console.warn("Difference failed", e); }
           }
         }
 
+        // Union
         if (!combined) combined = feature;
         else {
           try {
@@ -125,13 +128,11 @@ fetch(scriptURL)
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
 
-      const category = (item.categorie || "Default").trim();
+      const category = (item.categorie || "").trim();
       const couche = (item.couche || "Default").trim();
       const nom = (item.nom || "Shape").trim();
+      if (!category) return;
 
-      if (!categoryGroups[category]) categoryGroups[category] = {};
-      if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
-      
       const layer = L.geoJSON(combined, {
         color,
         fillColor: color,
@@ -142,21 +143,25 @@ fetch(scriptURL)
         { sticky: true }
       );
 
+      // Group by category then couche
+      if (!categoryGroups[category]) categoryGroups[category] = {};
+      if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
       categoryGroups[category][couche].push(layer);
     });
 
-    // ---- Build Panel Layers with groups collapsed by default ----
+    // ---- Build Panel Layers with collapsed groups ----
     const overlays = [];
     Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
       const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
-        const groupLayer = L.layerGroup(shapes);
+        const groupLayer = L.layerGroup(shapes); // not added to map initially
         return { name: couche, layer: groupLayer };
       });
-      overlays.push({ group: cat, layers: layersArray, collapsed: true }); // groups collapsed by default
+      overlays.push({ group: cat, layers: layersArray, collapsed: true }); // panel layers library respects this for group headers
     });
 
     const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
+
   })
   .catch(err => {
     console.error("Error fetching data:", err);
