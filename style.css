@@ -9,6 +9,7 @@ body {
   width: 100%;
 }
 
+/* Info boxes */
 .info.mouse-coords,
 .info.clicked-coords,
 .info.button-box {
@@ -19,21 +20,21 @@ body {
   font-size: 14px;
 }
 
-/* Clicked coordinates box styling - horizontal wrap */
+/* Clicked coordinates box */
 .info.clicked-coords {
   max-width: 60%;
 }
 .info.clicked-coords pre {
   display: flex;
-  flex-wrap: wrap;        /* allow coordinates to wrap horizontally */
-  gap: 8px;               /* space between coordinates */
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 0;
-  white-space: normal;    /* allow wrapping inside */
-  font-family: monospace; /* keep coordinates aligned */
+  white-space: normal;
+  font-family: monospace;
   font-size: 13px;
 }
 
-/* Button box styling */
+/* Button box */
 .info.button-box {
   display: flex;
   gap: 5px;
@@ -52,13 +53,21 @@ body {
   background-color: #0056b3;
 }
 
-/* Waypoint triangle marker styling */
-.waypoint-marker {
+/* Navigation triangle marker styling */
+.navigation-marker {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.waypoint-label {
+.navigation-marker svg {
+  display: block;
+  vertical-align: middle;
+}
+.navigation-marker svg polygon {
+  stroke: #333;
+  stroke-width: 1;
+}
+.navigation-label {
   font-weight: bold;
   font-size: 13px;
   color: #333;
@@ -67,8 +76,5 @@ body {
   border-radius: 3px;
   box-shadow: 0 0 2px rgba(0,0,0,0.3);
   white-space: nowrap;
-}
-.waypoint-marker svg polygon {
-  stroke: #333;      /* triangle border */
-  stroke-width: 1;
+  margin-left: 4px;
 }
