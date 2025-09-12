@@ -73,41 +73,9 @@ fetch(scriptURL)
       return;
     }
 
-    const categoryGroups = {}; // group by category
+    const categoryGroups = {};
 
     data.forEach(item => {
-      const category = (item.categorie || "").trim();
-      const couche = (item.couche || "Default").trim();
-      const nom = (item.nom || "Shape").trim();
-      if (!category) return;
-
-      // --- Special case: Navigation (was Waypoint) ---
-      if (category === "Navigation") {
-        const point = parseGeometry(item.p1);
-        if (point && point.geometry && point.geometry.type === "Point") {
-          const coords = point.geometry.coordinates;
-          const latlng = [coords[1], coords[0]]; // flip for Leaflet
-
-          const marker = L.marker(latlng, {
-            icon: L.divIcon({
-              className: 'navigation-marker',
-              html: `<svg width="14" height="14" viewBox="0 0 10 10">
-                      <polygon points="5,0 10,10 0,10" style="fill:#ff0000;"/>
-                     </svg>
-                     <span class="navigation-label">${nom}</span>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 10]
-            })
-          });
-
-          if (!categoryGroups[category]) categoryGroups[category] = {};
-          if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
-          categoryGroups[category][couche].push(marker);
-        }
-        return; // skip the regular geometry processing
-      }
-
-      // --- Regular shapes (polygons, lines, etc.) ---
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
@@ -115,8 +83,26 @@ fetch(scriptURL)
         [item.p4, item.intp4, item.exp4]
       ];
 
-      let combined = null;
+      // ---- Navigation markers ----
+      if ((item.categorie || "").trim() === "Navigation") {
+        const coords = parseGeometry(item.p1); // assume p1 has the point
+        if (coords && coords.geometry && coords.geometry.coordinates) {
+          const [lng, lat] = coords.geometry.coordinates;
+          const triangleIcon = L.divIcon({
+            className: "waypoint-marker",
+            html: `<svg width="16" height="16">
+                     <polygon points="8,0 16,16 0,16" fill="#f00" />
+                   </svg>
+                   <span class="waypoint-label">${item.nom}</span>`,
+            iconAnchor: [8, 8]
+          });
+          L.marker([lat, lng], { icon: triangleIcon }).addTo(map);
+        }
+        return; // skip further processing
+      }
 
+      // ---- Other features ----
+      let combined = null;
       quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
         let feature = parseGeometry(geom);
@@ -138,15 +124,16 @@ fetch(scriptURL)
             try {
               const diff = turf.difference(feature, expFeature);
               if (diff) feature = diff;
-              else return; // fully excluded
+              else return;
             } catch (e) { console.warn("Difference failed", e); }
           }
         }
 
         if (!combined) combined = feature;
         else {
-          try { combined = turf.union(combined, feature); }
-          catch (e) { console.warn("Union failed", e); }
+          try {
+            combined = turf.union(combined, feature);
+          } catch (e) { console.warn("Union failed", e); }
         }
       });
 
@@ -155,6 +142,11 @@ fetch(scriptURL)
       let color = (item.couleur || "").trim();
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
+
+      const category = (item.categorie || "").trim();
+      const couche = (item.couche || "Default").trim();
+      const nom = (item.nom || "Shape").trim();
+      if (!category) return;
 
       const layer = L.geoJSON(combined, {
         color,
@@ -171,19 +163,18 @@ fetch(scriptURL)
       categoryGroups[category][couche].push(layer);
     });
 
-    // ---- Build Panel Layers with collapsed groups ----
+    // ---- Build Panel Layers with collapsed categories ----
     const overlays = [];
     Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
       const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
         const groupLayer = L.layerGroup(shapes);
         return { name: couche, layer: groupLayer };
       });
-      overlays.push({ group: cat, layers: layersArray });
+      overlays.push({ group: cat, layers: layersArray, collapsed: true }); // collapse each category
     });
 
-    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true, collapsed: true });
+    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
-
   })
   .catch(err => {
     console.error("Error fetching data:", err);
