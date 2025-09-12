@@ -92,8 +92,8 @@ fetch(scriptURL)
 
           const triangleIcon = L.divIcon({
             className: 'navigation-marker',
-            html: `<svg width="16" height="16" viewBox="0 0 10 10">
-                     <polygon points="5,0 10,10 0,10" fill="${color}" stroke="#333" stroke-width="1"/>
+            html: `<svg width="16" height="16" viewBox="0 0 16 16">
+                     <polygon points="8,0 16,16 0,16" fill="${color}" stroke="#333" stroke-width="1"/>
                    </svg>
                    <span class="navigation-label">${nom}</span>`,
             iconSize: [16, 16],
