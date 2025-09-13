@@ -28,22 +28,13 @@ body {
   margin-left: 5px;
 }
 
-/* Controls below map */
+/* Clicked coordinates + buttons below map */
 #map-controls {
   margin: 10px;
 }
-#drawTypeSelect {
-  margin-bottom: 5px;
-  padding: 4px 8px;
-  font-size: 14px;
-}
-
-/* Clicked coordinates box */
 .clicked-coords {
   font-family: monospace;
   font-size: 13px;
-  margin-bottom: 5px;
-
   display: flex;        /* inline layout */
   flex-wrap: wrap;      /* wrap only if container full */
   gap: 8px;             /* spacing between coordinates */
