@@ -9,11 +9,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 
 const whiteOverlay = L.rectangle([[-90, -180], [90, 180]], {
   color: '#ffffff',
   weight: 0,
-  fillOpacity: 0.3, // default transparency
-  interactive: false
+  fillOpacity: 0.3, 
+  interactive: false // allow clicks to pass through
 }).addTo(map);
 
-// ---- Opacity Slider Control ----
+// ---- Opacity Slider Control (fixed) ----
 const opacityControl = L.control({ position: 'topright' });
 opacityControl.onAdd = function () {
   const div = L.DomUtil.create('div', 'info opacity-control');
@@ -25,6 +25,11 @@ opacityControl.onAdd = function () {
   div.style.padding = '5px';
   div.style.borderRadius = '5px';
   div.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+
+  // ---- Prevent map interactions while using the control ----
+  L.DomEvent.disableClickPropagation(div);
+  L.DomEvent.disableScrollPropagation(div);
+
   return div;
 };
 opacityControl.addTo(map);
