@@ -22,24 +22,22 @@ opacitySlider.addEventListener('input', e => {
   opacityValue.innerText = `${Math.round(value*100)}%`;
 });
 
-// ---- Click Coordinates & Markers ----
+// ---- Clicked Coordinates Box + Buttons ----
 let clickCoords = [];
-let clickMarkers = L.layerGroup().addTo(map);
-
 const clickedCoordsBox = document.getElementById("clickedCoordsBox");
 const clearBtn = document.getElementById("clearBtn");
 const copyBtn = document.getElementById("copyBtn");
 
 function updateClickedCoords() {
   const inlineCoords = clickCoords
-    .map(coord => `[${coord[0].toFixed(6)},${coord[1].toFixed(6)}]`)
+    .map(coord => `[${coord[0].toFixed(6)},${coord[1].toFixed(6)}${coord.length > 2 ? `, radius: ${coord[2].toFixed(2)} NM` : ''}]`)
     .join(', ');
   clickedCoordsBox.innerHTML = `<strong>Coordinates:</strong> ${inlineCoords}`;
 }
 
 clearBtn.addEventListener('click', () => {
   clickCoords = [];
-  clickMarkers.clearLayers();
+  drawnItems.clearLayers();
   updateClickedCoords();
 });
 
@@ -47,12 +45,6 @@ copyBtn.addEventListener('click', () => {
   navigator.clipboard.writeText(JSON.stringify(clickCoords,null,2))
     .then(() => alert("Coordinates copied!"))
     .catch(err => console.error(err));
-});
-
-map.on("click", e => {
-  clickCoords.push([e.latlng.lng, e.latlng.lat]);
-  L.marker(e.latlng).addTo(clickMarkers);
-  updateClickedCoords();
 });
 
 // ---- Full-Screen Loading Overlay ----
@@ -85,7 +77,7 @@ mouseCoordsBox.update = function (latlng) {
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
-// ---- Leaflet Draw Controls ----
+// ---- Leaflet Draw Controls (Marker, Polyline, Polygon, Circle) ----
 const drawnItems = new L.FeatureGroup().addTo(map);
 const drawControl = new L.Control.Draw({
   draw: {
@@ -93,7 +85,8 @@ const drawControl = new L.Control.Draw({
     polygon: true,
     circle: true,
     marker: true,
-    rectangle: false
+    rectangle: false,
+    circlemarker: false
   },
   edit: {
     featureGroup: drawnItems
@@ -106,32 +99,25 @@ map.on(L.Draw.Event.CREATED, function(e) {
   const layer = e.layer;
   drawnItems.addLayer(layer);
 
-  let coordsText = "";
   if (layer instanceof L.Marker) {
-    coordsText = `[${layer.getLatLng().lng.toFixed(6)},${layer.getLatLng().lat.toFixed(6)}]`;
     clickCoords.push([layer.getLatLng().lng, layer.getLatLng().lat]);
   }
   else if (layer instanceof L.Circle) {
     const latlng = layer.getLatLng();
     const radiusNM = layer.getRadius() / 1852; // meters to nautical miles
-    coordsText = `[${latlng.lng.toFixed(6)},${latlng.lat.toFixed(6)}, radius: ${radiusNM.toFixed(2)} NM]`;
     clickCoords.push([latlng.lng, latlng.lat, radiusNM]);
   }
   else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-    coordsText = layer.getLatLngs()
-      .map(p => `[${p.lng.toFixed(6)},${p.lat.toFixed(6)}]`).join(', ');
     layer.getLatLngs().forEach(p => clickCoords.push([p.lng, p.lat]));
   }
   else if (layer instanceof L.Polygon) {
-    coordsText = layer.getLatLngs()[0]
-      .map(p => `[${p.lng.toFixed(6)},${p.lat.toFixed(6)}]`).join(', ');
     layer.getLatLngs()[0].forEach(p => clickCoords.push([p.lng, p.lat]));
   }
 
   updateClickedCoords();
 });
 
-// ---- Fetch Data & Turf Processing ----
+// ---- Fetch Turf Data & PanelLayers ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
@@ -171,13 +157,13 @@ fetch(scriptURL)
         return;
       }
 
-      // Normal shapes
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
         [item.p3, item.intp3, item.exp3],
         [item.p4, item.intp4, item.exp4]
       ];
+
       let combined = null;
       quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
