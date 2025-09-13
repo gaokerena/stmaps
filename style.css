@@ -36,6 +36,11 @@ body {
   font-family: monospace;
   font-size: 13px;
   margin-bottom: 5px;
+
+  display: flex;        /* inline layout */
+  flex-wrap: wrap;      /* wrap only if container full */
+  gap: 8px;             /* spacing between coordinates */
+  white-space: normal;  /* allow wrapping */
 }
 
 /* Buttons */
