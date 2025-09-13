@@ -3,7 +3,7 @@ body {
   margin: 0;
 }
 
-/* Full screen map */
+/* Map container */
 #map {
   height: 900px;
   width: 100%;
@@ -21,20 +21,20 @@ body {
   box-shadow: 0 0 5px rgba(0,0,0,0.3);
   font-size: 14px;
   z-index: 10000;
-  pointer-events: auto;
 }
 #overlayControl input[type="range"] {
   vertical-align: middle;
   margin-left: 5px;
 }
 
-/* Clicked coordinates + buttons below map */
+/* Controls below map */
 #map-controls {
   margin: 10px;
 }
 .clicked-coords {
   font-family: monospace;
   font-size: 13px;
+  margin-bottom: 5px;
   display: flex;        /* inline layout */
   flex-wrap: wrap;      /* wrap only if container full */
   gap: 8px;             /* spacing between coordinates */
