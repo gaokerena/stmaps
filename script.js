@@ -5,7 +5,7 @@ const map = L.map('map').setView([48.5, 7.5], 8);
 // ---- Base Tiles ----
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-// ---- White Overlay Above Tiles ----
+// ---- White Overlay ----
 const whiteOverlay = L.rectangle([[-90,-180],[90,180]], {
   color: '#ffffff',
   weight: 0,
@@ -13,16 +13,7 @@ const whiteOverlay = L.rectangle([[-90,-180],[90,180]], {
   interactive: false
 }).addTo(map);
 
-// ---- Overlay Opacity Slider (top-right) ----
-const sliderDiv = document.createElement('div');
-sliderDiv.id = 'overlayControl';
-sliderDiv.innerHTML = `
-  <label for="opacitySlider">Overlay Opacity:</label>
-  <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
-  <span id="opacityValue">30%</span>
-`;
-document.body.appendChild(sliderDiv);
-
+// ---- Overlay Opacity Slider ----
 const opacitySlider = document.getElementById('opacitySlider');
 const opacityValue = document.getElementById('opacityValue');
 opacitySlider.addEventListener('input', e => {
@@ -35,44 +26,20 @@ opacitySlider.addEventListener('input', e => {
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
 
-// ---- Controls below map (draw type + clicked coordinates + buttons) ----
-const controlsContainer = document.createElement('div');
-controlsContainer.id = 'map-controls';
-controlsContainer.innerHTML = `
-  <select id="drawTypeSelect">
-    <option value="">Select Draw Type</option>
-    <option value="marker">Point</option>
-    <option value="polyline">Ligne</option>
-    <option value="polygon">Polygone</option>
-    <option value="circle">Cercle</option>
-  </select>
-  <div id="clickedCoordsBox" class="clicked-coords"></div>
-  <button id="clearBtn">Clear</button>
-  <button id="copyBtn">Copy</button>
-`;
-document.body.appendChild(controlsContainer);
-
 const clickedCoordsBox = document.getElementById("clickedCoordsBox");
 const clearBtn = document.getElementById("clearBtn");
 const copyBtn = document.getElementById("copyBtn");
-const drawTypeSelect = document.getElementById("drawTypeSelect");
 
-// Update clicked coordinates display
 function updateClickedCoords() {
   const inlineCoords = clickCoords
-    .map(coord => {
-      if (!Array.isArray(coord)) return '';
-      if (coord.length === 3) return `[${coord[0].toFixed(6)},${coord[1].toFixed(6)},${coord[2].toFixed(2)}nm]`;
-      return `[${coord.map(c => c.toFixed(6)).join(',')}]`;
-    })
+    .map(coord => `[${coord[0].toFixed(6)},${coord[1].toFixed(6)}]`)
     .join(', ');
-  clickedCoordsBox.innerHTML = `<strong>Clicked:</strong> ${inlineCoords}`;
+  clickedCoordsBox.innerHTML = `<strong>Coordinates:</strong> ${inlineCoords}`;
 }
 
 clearBtn.addEventListener('click', () => {
   clickCoords = [];
   clickMarkers.clearLayers();
-  drawnItems.clearLayers();
   updateClickedCoords();
 });
 
@@ -83,7 +50,6 @@ copyBtn.addEventListener('click', () => {
 });
 
 map.on("click", e => {
-  if (!drawnItems) return;
   clickCoords.push([e.latlng.lng, e.latlng.lat]);
   L.marker(e.latlng).addTo(clickMarkers);
   updateClickedCoords();
@@ -99,13 +65,12 @@ loadingOverlay.innerHTML = `
   </div>
 `;
 document.getElementById("map").appendChild(loadingOverlay);
-
 function removeLoadingOverlay() {
   loadingOverlay.classList.add("fade-out");
   setTimeout(() => loadingOverlay.remove(), 500);
 }
 
-// ---- Mouse Coordinates Box (bottom-left) ----
+// ---- Mouse Coordinates Box ----
 const mouseCoordsBox = L.control({ position: "bottomleft" });
 mouseCoordsBox.onAdd = function () {
   this._div = L.DomUtil.create("div", "info mouse-coords");
@@ -120,16 +85,58 @@ mouseCoordsBox.update = function (latlng) {
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
-// ---- Turf Data & Panel Layers ----
+// ---- Leaflet Draw Controls ----
+const drawnItems = new L.FeatureGroup().addTo(map);
+const drawControl = new L.Control.Draw({
+  draw: {
+    polyline: true,
+    polygon: true,
+    circle: true,
+    marker: true,
+    rectangle: false
+  },
+  edit: {
+    featureGroup: drawnItems
+  }
+});
+map.addControl(drawControl);
+
+// ---- Handle Draw Created ----
+map.on(L.Draw.Event.CREATED, function(e) {
+  const layer = e.layer;
+  drawnItems.addLayer(layer);
+
+  let coordsText = "";
+  if (layer instanceof L.Marker) {
+    coordsText = `[${layer.getLatLng().lng.toFixed(6)},${layer.getLatLng().lat.toFixed(6)}]`;
+    clickCoords.push([layer.getLatLng().lng, layer.getLatLng().lat]);
+  }
+  else if (layer instanceof L.Circle) {
+    const latlng = layer.getLatLng();
+    const radiusNM = layer.getRadius() / 1852; // meters to nautical miles
+    coordsText = `[${latlng.lng.toFixed(6)},${latlng.lat.toFixed(6)}, radius: ${radiusNM.toFixed(2)} NM]`;
+    clickCoords.push([latlng.lng, latlng.lat, radiusNM]);
+  }
+  else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+    coordsText = layer.getLatLngs()
+      .map(p => `[${p.lng.toFixed(6)},${p.lat.toFixed(6)}]`).join(', ');
+    layer.getLatLngs().forEach(p => clickCoords.push([p.lng, p.lat]));
+  }
+  else if (layer instanceof L.Polygon) {
+    coordsText = layer.getLatLngs()[0]
+      .map(p => `[${p.lng.toFixed(6)},${p.lat.toFixed(6)}]`).join(', ');
+    layer.getLatLngs()[0].forEach(p => clickCoords.push([p.lng, p.lat]));
+  }
+
+  updateClickedCoords();
+});
+
+// ---- Fetch Data & Turf Processing ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
     removeLoadingOverlay();
-
-    if (!Array.isArray(data) || data.length === 0) {
-      alert("No data available to display.");
-      return;
-    }
+    if (!Array.isArray(data) || data.length === 0) return;
 
     const categoryGroups = {};
 
@@ -164,133 +171,76 @@ fetch(scriptURL)
         return;
       }
 
+      // Normal shapes
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
         [item.p3, item.intp3, item.exp3],
         [item.p4, item.intp4, item.exp4]
       ];
-
       let combined = null;
       quads.forEach(([geom, intGeom, expGeom]) => {
         if (!geom) return;
         let feature = parseGeometry(geom);
         if (!feature) return;
-
         if (intGeom) {
           const intFeature = parseGeometry(intGeom);
           if (intFeature) {
-            try { feature = turf.intersect(feature, intFeature) || feature; }
-            catch (e) { console.warn("Intersection failed", e); }
+            try { const intersection = turf.intersect(feature,intFeature); if(intersection) feature=intersection;} 
+            catch(e){console.warn("Intersection failed",e);}
           }
         }
-
-        if (expGeom) {
-          const expFeature = parseGeometry(expGeom);
-          if (expFeature) {
-            try { feature = turf.difference(feature, expFeature) || feature; }
-            catch (e) { console.warn("Difference failed", e); }
+        if(expGeom){
+          const expFeature=parseGeometry(expGeom);
+          if(expFeature){
+            try{ const diff = turf.difference(feature,expFeature); if(diff) feature=diff; else return;}
+            catch(e){console.warn("Difference failed",e);}
           }
         }
-
-        if (!combined) combined = feature;
-        else try { combined = turf.union(combined, feature); } catch(e){ console.warn("Union failed", e); }
+        if(!combined) combined=feature;
+        else{try{combined=turf.union(combined,feature);}catch(e){console.warn("Union failed",e);}}
       });
+      if(!combined) return;
 
-      if (!combined) return;
+      const layer = L.geoJSON(combined,{
+        color, fillColor: color, weight:2, fillOpacity:0.3
+      }).bindTooltip(`<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,{sticky:true});
 
-      const layer = L.geoJSON(combined, {
-        color,
-        fillColor: color,
-        weight: 2,
-        fillOpacity: 0.3
-      }).bindTooltip(
-        `<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,
-        { sticky: true }
-      );
-
-      if (!categoryGroups[category]) categoryGroups[category] = {};
-      if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
+      if(!categoryGroups[category]) categoryGroups[category]={};
+      if(!categoryGroups[category][couche]) categoryGroups[category][couche]=[];
       categoryGroups[category][couche].push(layer);
     });
 
-    const overlays = [];
-    Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
-      const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
-        const groupLayer = L.layerGroup(shapes);
-        return { name: couche, layer: groupLayer };
+    const overlays=[];
+    Object.entries(categoryGroups).forEach(([cat,coucheLayers])=>{
+      const layersArray=Object.entries(coucheLayers).map(([couche,shapes])=>{
+        const groupLayer=L.layerGroup(shapes);
+        return {name:couche,layer:groupLayer};
       });
-      overlays.push({ group: cat, layers: layersArray, collapsed: true });
+      overlays.push({group:cat,layers:layersArray,collapsed:true});
     });
 
     const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
-  })
-  .catch(err => {
-    removeLoadingOverlay();
-    console.error("Error fetching data:", err);
-    alert("Failed to load map data.");
-  });
 
-// ---- Leaflet Draw ----
-const drawnItems = new L.FeatureGroup().addTo(map);
-let drawControl;
+  }).catch(err=>{removeLoadingOverlay(); console.error(err); alert("Failed to load map data.");});
 
-function initDraw(type) {
-  if (drawControl) drawControl.remove();
-  if (!type) return;
-
-  const options = { edit: { featureGroup: drawnItems }, draw: {} };
-  options.draw[type] = type === 'circle' ? { shapeOptions: { color: 'red' } } : {};
-  ['marker','polyline','polygon','circle'].forEach(t => { if(t!==type) options.draw[t]=false; });
-
-  drawControl = new L.Control.Draw(options);
-  map.addControl(drawControl);
-}
-
-// Handle draw type selection
-drawTypeSelect.addEventListener('change', () => {
-  drawnItems.clearLayers();
-  clickCoords = [];
-  updateClickedCoords();
-  initDraw(drawTypeSelect.value);
-});
-
-// Capture drawn features
-map.on(L.Draw.Event.CREATED, e => {
-  const layer = e.layer;
-  drawnItems.addLayer(layer);
-
-  let coords = [];
-  if (layer instanceof L.Circle) {
-    const center = layer.getLatLng();
-    const radius_nm = layer.getRadius() / 1852; // meters → nautical miles
-    coords = [center.lng, center.lat, radius_nm];
-  } else if (layer instanceof L.Marker) {
-    const latlng = layer.getLatLng();
-    coords = [latlng.lng, latlng.lat];
-  } else if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
-    coords = layer.getLatLngs()[0].map(ll => [ll.lng,ll.lat]);
-  }
-  clickCoords.push(coords);
-  updateClickedCoords();
-});
-
-// ---- Geometry parser ----
-function parseGeometry(obj) {
-  if (!obj) return null;
-  try {
-    const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-    if (parsed.center && parsed.radius)
-      return turf.circle(parsed.center, parsed.radius, parsed.options || {});
-    if (Array.isArray(parsed)) {
-      if (parsed.length === 2 && typeof parsed[0]==="number") return turf.point(parsed);
-      if (parsed.length>1 && Array.isArray(parsed[0])) {
-        const first = parsed[0], last = parsed[parsed.length-1];
-        if (first[0]===last[0] && first[1]===last[1]) return turf.polygon([parsed]);
+// ---- Geometry Parser ----
+function parseGeometry(obj){
+  if(!obj) return null;
+  try{
+    const parsed=typeof obj==="string"?JSON.parse(obj):obj;
+    if(parsed.center && parsed.radius)
+      return turf.circle(parsed.center, parsed.radius, parsed.options||{});
+    if(Array.isArray(parsed)){
+      if(parsed.length===2 && typeof parsed[0]==="number" && typeof parsed[1]==="number")
+        return turf.point(parsed);
+      if(parsed.length>1 && Array.isArray(parsed[0])){
+        const first=parsed[0],last=parsed[parsed.length-1];
+        if(first[0]===last[0] && first[1]===last[1]) return turf.polygon([parsed]);
         return turf.lineString(parsed);
       }
     }
-  } catch(e){ console.warn("Invalid geometry:", obj,e);}
+  }catch(e){console.warn("Invalid geometry:",obj,e);}
   return null;
 }
