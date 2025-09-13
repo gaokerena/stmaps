@@ -10,30 +10,19 @@ const whiteOverlay = L.rectangle([[-90, -180], [90, 180]], {
   color: '#ffffff',
   weight: 0,
   fillOpacity: 0.3, 
-  interactive: false // allow clicks to pass through
+  interactive: false
 }).addTo(map);
 
-// ---- Opacity Slider Control (fixed) ----
-const opacityControl = L.control({ position: 'topright' });
-opacityControl.onAdd = function () {
-  const div = L.DomUtil.create('div', 'info opacity-control');
-  div.innerHTML = `
-    <label>Overlay Opacity: <span id="opacityValue">0.3</span></label>
-    <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
-  `;
-  div.style.background = 'white';
-  div.style.padding = '5px';
-  div.style.borderRadius = '5px';
-  div.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+// ---- Floating Opacity Slider (top-left, outside map bounds) ----
+const sliderDiv = document.createElement('div');
+sliderDiv.className = 'opacity-slider-control';
+sliderDiv.innerHTML = `
+  <label>Overlay Opacity: <span id="opacityValue">0.3</span></label>
+  <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
+`;
+document.body.appendChild(sliderDiv);
 
-  // ---- Prevent map interactions while using the control ----
-  L.DomEvent.disableClickPropagation(div);
-  L.DomEvent.disableScrollPropagation(div);
-
-  return div;
-};
-opacityControl.addTo(map);
-
+// Update overlay opacity on slider input
 document.getElementById('opacitySlider').addEventListener('input', e => {
   const value = parseFloat(e.target.value);
   whiteOverlay.setStyle({ fillOpacity: value });
@@ -122,7 +111,7 @@ map.on("click", e => {
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    removeLoadingOverlay(); // Remove overlay when data is loaded
+    removeLoadingOverlay();
 
     if (!Array.isArray(data) || data.length === 0) {
       alert("No data available to display.");
@@ -140,7 +129,6 @@ fetch(scriptURL)
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
       if (!category) return;
 
-      // ---- Navigation markers (triangle + label) ----
       if (category === "Navigation" && item.p1) {
         const coords = parseGeometry(item.p1);
         if (coords && coords.geometry && coords.geometry.coordinates) {
@@ -165,7 +153,6 @@ fetch(scriptURL)
         return;
       }
 
-      // ---- Normal polygon shapes ----
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
@@ -225,7 +212,6 @@ fetch(scriptURL)
       categoryGroups[category][couche].push(layer);
     });
 
-    // ---- Build Panel Layers ----
     const overlays = [];
     Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
       const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
@@ -239,7 +225,7 @@ fetch(scriptURL)
     map.addControl(panelLayers);
   })
   .catch(err => {
-    removeLoadingOverlay(); // Remove overlay on error
+    removeLoadingOverlay();
     console.error("Error fetching data:", err);
     alert("Failed to load map data.");
   });
