@@ -1,8 +1,41 @@
 const scriptURL = "https://script.google.com/macros/s/AKfycbxqeaRLtaxBI7-VLT2nox7QhRbz2EFIcN3kcHMC11R6I0HHFH8LgwUgaF736iPc5Pm8/exec";
 
 const map = L.map('map').setView([48.5, 7.5], 8);
+
+// ---- Base Tiles ----
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
+// ---- White Overlay Above Tiles ----
+const whiteOverlay = L.rectangle([[-90, -180], [90, 180]], {
+  color: '#ffffff',
+  weight: 0,
+  fillOpacity: 0.3, // default transparency
+  interactive: false
+}).addTo(map);
+
+// ---- Opacity Slider Control ----
+const opacityControl = L.control({ position: 'topright' });
+opacityControl.onAdd = function () {
+  const div = L.DomUtil.create('div', 'info opacity-control');
+  div.innerHTML = `
+    <label>Overlay Opacity: <span id="opacityValue">0.3</span></label>
+    <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
+  `;
+  div.style.background = 'white';
+  div.style.padding = '5px';
+  div.style.borderRadius = '5px';
+  div.style.boxShadow = '0 0 5px rgba(0,0,0,0.3)';
+  return div;
+};
+opacityControl.addTo(map);
+
+document.getElementById('opacitySlider').addEventListener('input', e => {
+  const value = parseFloat(e.target.value);
+  whiteOverlay.setStyle({ fillOpacity: value });
+  document.getElementById('opacityValue').innerText = value;
+});
+
+// ---- Click Coordinates ----
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
 
