@@ -6,7 +6,7 @@ const map = L.map('map').setView([48.5, 7.5], 8);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
 // ---- White Overlay Above Tiles ----
-const whiteOverlay = L.rectangle([[-90, -180], [90, 180]], {
+const whiteOverlay = L.rectangle([[-90,-180],[90,180]], {
   color: '#ffffff',
   weight: 0,
   fillOpacity: 0.3,
@@ -25,7 +25,6 @@ document.body.appendChild(sliderDiv);
 
 const opacitySlider = document.getElementById('opacitySlider');
 const opacityValue = document.getElementById('opacityValue');
-
 opacitySlider.addEventListener('input', e => {
   const value = parseFloat(e.target.value);
   whiteOverlay.setStyle({ fillOpacity: value });
@@ -35,6 +34,45 @@ opacitySlider.addEventListener('input', e => {
 // ---- Click Coordinates & Markers ----
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
+
+// ---- Clicked Coordinates Box + Buttons (below map) ----
+const controlsContainer = document.createElement('div');
+controlsContainer.id = 'map-controls';
+controlsContainer.innerHTML = `
+  <div id="clickedCoordsBox" class="clicked-coords"></div>
+  <button id="clearBtn">Clear</button>
+  <button id="copyBtn">Copy</button>
+`;
+document.body.appendChild(controlsContainer);
+
+const clickedCoordsBox = document.getElementById("clickedCoordsBox");
+const clearBtn = document.getElementById("clearBtn");
+const copyBtn = document.getElementById("copyBtn");
+
+function updateClickedCoords() {
+  const inlineCoords = clickCoords
+    .map(coord => `[${coord[0].toFixed(6)},${coord[1].toFixed(6)}]`)
+    .join(', ');
+  clickedCoordsBox.innerHTML = `<strong>Clicked:</strong> ${inlineCoords}`;
+}
+
+clearBtn.addEventListener('click', () => {
+  clickCoords = [];
+  clickMarkers.clearLayers();
+  updateClickedCoords();
+});
+
+copyBtn.addEventListener('click', () => {
+  navigator.clipboard.writeText(JSON.stringify(clickCoords,null,2))
+    .then(() => alert("Coordinates copied!"))
+    .catch(err => console.error(err));
+});
+
+map.on("click", e => {
+  clickCoords.push([e.latlng.lng, e.latlng.lat]);
+  L.marker(e.latlng).addTo(clickMarkers);
+  updateClickedCoords();
+});
 
 // ---- Full-Screen Loading Overlay ----
 const loadingOverlay = document.createElement("div");
@@ -52,7 +90,7 @@ function removeLoadingOverlay() {
   setTimeout(() => loadingOverlay.remove(), 500);
 }
 
-// ---- Mouse Coordinates Box ----
+// ---- Mouse Coordinates Box (bottom-left) ----
 const mouseCoordsBox = L.control({ position: "bottomleft" });
 mouseCoordsBox.onAdd = function () {
   this._div = L.DomUtil.create("div", "info mouse-coords");
@@ -66,40 +104,6 @@ mouseCoordsBox.update = function (latlng) {
 };
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
-
-// ---- Clicked Coordinates & Buttons Below Map ----
-const controlsContainer = document.createElement('div');
-controlsContainer.id = 'map-controls';
-controlsContainer.innerHTML = `
-  <div id="clickedCoordsBox" class="clicked-coords"></div>
-  <button id="clearBtn">Clear</button>
-  <button id="copyBtn">Copy</button>
-`;
-document.body.appendChild(controlsContainer);
-
-const clickedCoordsBox = document.getElementById("clickedCoordsBox");
-
-function updateClickedCoords() {
-  clickedCoordsBox.innerHTML = `<strong>Clicked:</strong> <pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
-}
-
-document.getElementById("clearBtn").addEventListener("click", () => {
-  clickCoords = [];
-  clickMarkers.clearLayers();
-  updateClickedCoords();
-});
-
-document.getElementById("copyBtn").addEventListener("click", () => {
-  navigator.clipboard.writeText(JSON.stringify(clickCoords, null, 2))
-    .then(() => alert("Coordinates copied!"))
-    .catch(err => console.error(err));
-});
-
-map.on("click", e => {
-  clickCoords.push([e.latlng.lng, e.latlng.lat]);
-  L.marker(e.latlng).addTo(clickMarkers);
-  updateClickedCoords();
-});
 
 // ---- Fetch Data & Build Features (Turf + PanelLayers) ----
 fetch(scriptURL)
