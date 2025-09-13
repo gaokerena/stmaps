@@ -28,8 +28,10 @@ body {
   background: white;
   padding: 5px 10px;
   border-radius: 5px;
-  box-shadow: 0 0 5px rgba(0,0,0,0.
-
+  box-shadow: 0 0 5px rgba(0,0,0,0.3);
+  z-index: 10000;
+  pointer-events: auto;
+}
 
 /* Clicked coordinates box - horizontal wrap */
 .info.clicked-coords {
