@@ -15,19 +15,19 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>LFST maps</h1>
+  <h1>Turf Data Viewer</h1>
 
-  <!-- Map container -->
-  <div id="map" style="height: 1100px;"></div>
-
-  <!-- Overlay Opacity Control -->
+  <!-- Overlay opacity control (top-right) -->
   <div id="overlayControl">
     <label for="opacitySlider">Overlay Opacity:</label>
     <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
     <span id="opacityValue">30%</span>
   </div>
 
-  <!-- Controls below the map -->
+  <!-- Map container -->
+  <div id="map" style="height: 900px;"></div>
+
+  <!-- Controls below map -->
   <div id="map-controls">
     <div id="clickedCoordsBox" class="clicked-coords"></div>
     <button id="clearBtn">Clear</button>
