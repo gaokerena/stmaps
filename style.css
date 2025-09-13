@@ -10,19 +10,6 @@ body {
   position: relative;
 }
 
-/* Mouse coordinates box (bottom-left) */
-.info.mouse-coords {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  background: white;
-  padding: 5px 10px;
-  border-radius: 5px;
-  box-shadow: 0 0 5px rgba(0,0,0,0.3);
-  font-size: 14px;
-  z-index: 1000;
-}
-
 /* Overlay opacity control (top-right) */
 #overlayControl {
   position: absolute;
@@ -33,32 +20,25 @@ body {
   border-radius: 5px;
   box-shadow: 0 0 5px rgba(0,0,0,0.3);
   font-size: 14px;
-  z-index: 10000; /* above map layers */
+  z-index: 10000;
   pointer-events: auto;
 }
-
 #overlayControl input[type="range"] {
   vertical-align: middle;
   margin-left: 5px;
 }
 
-/* Controls below the map */
+/* Clicked coordinates + buttons below map */
 #map-controls {
   margin: 10px;
 }
-
 .clicked-coords {
-  background: white;
-  padding: 5px 10px;
-  border-radius: 5px;
-  box-shadow: 0 0 5px rgba(0,0,0,0.3);
   font-family: monospace;
   font-size: 13px;
-  white-space: pre-wrap;
   margin-bottom: 5px;
 }
 
-/* Buttons below map */
+/* Buttons */
 #map-controls button {
   padding: 4px 10px;
   margin-right: 5px;
@@ -73,7 +53,20 @@ body {
   background-color: #0056b3;
 }
 
-/* Navigation marker styles (triangles + labels) */
+/* Mouse coordinates box (bottom-left) */
+.info.mouse-coords {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.3);
+  font-size: 14px;
+  z-index: 1000;
+}
+
+/* Navigation markers */
 .navigation-marker {
   display: inline-flex;
   align-items: center;
@@ -92,7 +85,7 @@ body {
   font-weight: bold;
   font-size: 13px;
   color: #333;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255,255,255,0.8);
   padding: 1px 4px;
   border-radius: 3px;
   box-shadow: 0 0 2px rgba(0,0,0,0.3);
@@ -100,13 +93,11 @@ body {
   margin-left: 4px;
 }
 
-/* Full-screen loading overlay */
+/* Loading overlay */
 .loading-overlay {
   position: absolute;
-  top: 0; 
-  left: 0;
-  width: 100%; 
-  height: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,39 +107,25 @@ body {
   transition: opacity 0.5s ease;
   pointer-events: all;
 }
-
-.loading-overlay.fade-out {
-  opacity: 0;
-}
-
+.loading-overlay.fade-out { opacity: 0; }
 .loading-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
 }
-
 .loading-text {
   font-size: 32px;
   font-weight: bold;
   color: #333;
   animation: pulse 1.2s infinite ease-in-out;
 }
-
 .spinner {
-  width: 80px;
-  height: 80px;
+  width: 80px; height: 80px;
   border: 8px solid #ccc;
   border-top: 8px solid #007bff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
