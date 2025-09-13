@@ -69,6 +69,7 @@ body {
   box-shadow: 0 0 5px rgba(0,0,0,0.3);
   font-size: 14px;
   z-index: 1000;
+  white-space: nowrap;
 }
 
 /* Navigation markers */
