@@ -20,6 +20,17 @@ body {
   font-size: 14px;
 }
 
+/* White background opacity slider */
+.opacity-slider-control {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.
+
+
 /* Clicked coordinates box - horizontal wrap */
 .info.clicked-coords {
   max-width: 60%;
