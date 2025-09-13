@@ -1,53 +1,8 @@
-const scriptURL = "https://script.google.com/macros/s/AKfycbxqeaRLtaxBI7-VLT2nox7QhRbz2EFIcN3kcHMC11R6I0HHFH8LgwUgaF736iPc5Pm8/exec";
-
 const map = L.map('map').setView([48.5, 7.5], 8);
-
-// ---- Base Tiles ----
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-// ---- White Overlay Above Tiles ----
-const whiteOverlay = L.rectangle([[-90, -180], [90, 180]], {
-  color: '#ffffff',
-  weight: 0,
-  fillOpacity: 0.3, 
-  interactive: false
-}).addTo(map);
-
-// ---- Floating Opacity Slider (top-left, outside map bounds) ----
-const sliderDiv = document.createElement('div');
-sliderDiv.className = 'opacity-slider-control';
-sliderDiv.innerHTML = `
-  <label>Overlay Opacity: <span id="opacityValue">0.3</span></label>
-  <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
-`;
-document.body.appendChild(sliderDiv);
-
-// Update overlay opacity on slider input
-document.getElementById('opacitySlider').addEventListener('input', e => {
-  const value = parseFloat(e.target.value);
-  whiteOverlay.setStyle({ fillOpacity: value });
-  document.getElementById('opacityValue').innerText = value;
-});
-
-// ---- Click Coordinates ----
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
-
-// ---- Full-Screen Loading Overlay ----
-const loadingOverlay = document.createElement("div");
-loadingOverlay.className = "loading-overlay";
-loadingOverlay.innerHTML = `
-  <div class="loading-content">
-    <div class="spinner"></div>
-    <div class="loading-text">Loading...</div>
-  </div>
-`;
-document.getElementById("map").appendChild(loadingOverlay);
-
-function removeLoadingOverlay() {
-  loadingOverlay.classList.add("fade-out");
-  setTimeout(() => loadingOverlay.remove(), 500);
-}
 
 // ---- Mouse Coordinates Box ----
 const mouseCoordsBox = L.control({ position: "bottomleft" });
@@ -64,35 +19,17 @@ mouseCoordsBox.update = function (latlng) {
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
-// ---- Clicked Coordinates Box ----
-const clickedCoordsBox = L.control({ position: "bottomright" });
-clickedCoordsBox.onAdd = function () {
-  this._div = L.DomUtil.create("div", "info clicked-coords");
-  this.update();
-  return this._div;
-};
-clickedCoordsBox.update = function () {
-  this._div.innerHTML = `<strong>Clicked:</strong> <pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
-};
-clickedCoordsBox.addTo(map);
+// ---- Clicked coordinates below the map ----
+const clickedCoordsBox = document.getElementById("clickedCoordsBox");
 
-// ---- Buttons ----
-const buttonBox = L.control({ position: "topleft" });
-buttonBox.onAdd = function () {
-  const div = L.DomUtil.create("div", "info button-box");
-  div.innerHTML = `
-    <button id="clearBtn">Clear</button>
-    <button id="copyBtn">Copy</button>
-  `;
-  div.querySelectorAll("button").forEach(btn => btn.addEventListener("click", e => e.stopPropagation()));
-  return div;
-};
-buttonBox.addTo(map);
+function updateClickedCoords() {
+  clickedCoordsBox.innerHTML = `<strong>Clicked:</strong> <pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
+}
 
 document.getElementById("clearBtn").addEventListener("click", () => {
   clickCoords = [];
   clickMarkers.clearLayers();
-  clickedCoordsBox.update();
+  updateClickedCoords();
 });
 
 document.getElementById("copyBtn").addEventListener("click", () => {
@@ -104,151 +41,21 @@ document.getElementById("copyBtn").addEventListener("click", () => {
 map.on("click", e => {
   clickCoords.push([e.latlng.lng, e.latlng.lat]);
   L.marker(e.latlng).addTo(clickMarkers);
-  clickedCoordsBox.update();
+  updateClickedCoords();
 });
 
-// ---- Fetch Data & Build Features ----
-fetch(scriptURL)
-  .then(resp => resp.json())
-  .then(data => {
-    removeLoadingOverlay();
+// ---- Example white overlay with adjustable opacity ----
+const whiteOverlay = L.rectangle([[90, -180], [-90, 180]], {
+  color: "#fff",
+  weight: 0,
+  fillOpacity: 1
+}).addTo(map);
 
-    if (!Array.isArray(data) || data.length === 0) {
-      alert("No data available to display.");
-      return;
-    }
+const opacitySlider = document.getElementById("opacitySlider");
+const opacityValue = document.getElementById("opacityValue");
 
-    const categoryGroups = {};
-
-    data.forEach(item => {
-      const category = (item.categorie || "").trim();
-      const couche = (item.couche || "Default").trim();
-      const nom = (item.nom || "Shape").trim();
-      let color = (item.couleur || "").trim();
-      if (color && color[0] !== "#") color = "#" + color;
-      if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
-      if (!category) return;
-
-      if (category === "Navigation" && item.p1) {
-        const coords = parseGeometry(item.p1);
-        if (coords && coords.geometry && coords.geometry.coordinates) {
-          const [lng, lat] = coords.geometry.coordinates;
-
-          const triangleIcon = L.divIcon({
-            className: 'navigation-marker',
-            html: `<svg width="16" height="16" viewBox="0 0 16 16">
-                     <polygon points="8,0 16,16 0,16" fill="${color}" stroke="#333" stroke-width="1"/>
-                   </svg>
-                   <span class="navigation-label">${nom}</span>`,
-            iconSize: [120, 16],
-            iconAnchor: [8, 8],
-          });
-
-          const marker = L.marker([lat, lng], { icon: triangleIcon });
-
-          if (!categoryGroups[category]) categoryGroups[category] = {};
-          if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
-          categoryGroups[category][couche].push(marker);
-        }
-        return;
-      }
-
-      const quads = [
-        [item.p1, item.intp1, item.exp1],
-        [item.p2, item.intp2, item.exp2],
-        [item.p3, item.intp3, item.exp3],
-        [item.p4, item.intp4, item.exp4]
-      ];
-
-      let combined = null;
-
-      quads.forEach(([geom, intGeom, expGeom]) => {
-        if (!geom) return;
-        let feature = parseGeometry(geom);
-        if (!feature) return;
-
-        if (intGeom) {
-          const intFeature = parseGeometry(intGeom);
-          if (intFeature) {
-            try {
-              const intersection = turf.intersect(feature, intFeature);
-              if (intersection) feature = intersection;
-            } catch (e) { console.warn("Intersection failed", e); }
-          }
-        }
-
-        if (expGeom) {
-          const expFeature = parseGeometry(expGeom);
-          if (expFeature) {
-            try {
-              const diff = turf.difference(feature, expFeature);
-              if (diff) feature = diff;
-              else return;
-            } catch (e) { console.warn("Difference failed", e); }
-          }
-        }
-
-        if (!combined) combined = feature;
-        else {
-          try { combined = turf.union(combined, feature); }
-          catch (e) { console.warn("Union failed", e); }
-        }
-      });
-
-      if (!combined) return;
-
-      const layer = L.geoJSON(combined, {
-        color,
-        fillColor: color,
-        weight: 2,
-        fillOpacity: 0.3
-      }).bindTooltip(
-        `<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,
-        { sticky: true }
-      );
-
-      if (!categoryGroups[category]) categoryGroups[category] = {};
-      if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
-      categoryGroups[category][couche].push(layer);
-    });
-
-    const overlays = [];
-    Object.entries(categoryGroups).forEach(([cat, coucheLayers]) => {
-      const layersArray = Object.entries(coucheLayers).map(([couche, shapes]) => {
-        const groupLayer = L.layerGroup(shapes);
-        return { name: couche, layer: groupLayer };
-      });
-      overlays.push({ group: cat, layers: layersArray, collapsed: true });
-    });
-
-    const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
-    map.addControl(panelLayers);
-  })
-  .catch(err => {
-    removeLoadingOverlay();
-    console.error("Error fetching data:", err);
-    alert("Failed to load map data.");
-  });
-
-// ---- Universal Geometry Parser ----
-function parseGeometry(obj) {
-  if (!obj) return null;
-  try {
-    const parsed = typeof obj === "string" ? JSON.parse(obj) : obj;
-    if (parsed.center && parsed.radius)
-      return turf.circle(parsed.center, parsed.radius, parsed.options || {});
-
-    if (Array.isArray(parsed)) {
-      if (parsed.length === 2 && typeof parsed[0] === "number" && typeof parsed[1] === "number")
-        return turf.point(parsed);
-
-      if (parsed.length > 1 && Array.isArray(parsed[0])) {
-        const first = parsed[0], last = parsed[parsed.length - 1];
-        if (first[0] === last[0] && first[1] === last[1])
-          return turf.polygon([parsed]);
-        return turf.lineString(parsed);
-      }
-    }
-  } catch (e) { console.warn("Invalid geometry:", obj, e); }
-  return null;
-}
+opacitySlider.addEventListener("input", e => {
+  const value = parseFloat(e.target.value);
+  whiteOverlay.setStyle({ fillOpacity: value });
+  opacityValue.innerText = `${Math.round(value * 100)}%`;
+});
