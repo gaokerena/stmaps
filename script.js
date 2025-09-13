@@ -9,27 +9,30 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 
 const whiteOverlay = L.rectangle([[-90, -180], [90, 180]], {
   color: '#ffffff',
   weight: 0,
-  fillOpacity: 0.3, 
+  fillOpacity: 0.3,
   interactive: false
 }).addTo(map);
 
-// ---- Floating Opacity Slider (top-left, outside map bounds) ----
+// ---- Overlay Opacity Slider (top-right) ----
 const sliderDiv = document.createElement('div');
-sliderDiv.className = 'opacity-slider-control';
+sliderDiv.id = 'overlayControl';
 sliderDiv.innerHTML = `
-  <label>Overlay Opacity: <span id="opacityValue">0.3</span></label>
+  <label for="opacitySlider">Overlay Opacity:</label>
   <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
+  <span id="opacityValue">30%</span>
 `;
 document.body.appendChild(sliderDiv);
 
-// Update overlay opacity on slider input
-document.getElementById('opacitySlider').addEventListener('input', e => {
+const opacitySlider = document.getElementById('opacitySlider');
+const opacityValue = document.getElementById('opacityValue');
+
+opacitySlider.addEventListener('input', e => {
   const value = parseFloat(e.target.value);
   whiteOverlay.setStyle({ fillOpacity: value });
-  document.getElementById('opacityValue').innerText = value;
+  opacityValue.innerText = `${Math.round(value*100)}%`;
 });
 
-// ---- Click Coordinates ----
+// ---- Click Coordinates & Markers ----
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
 
@@ -64,35 +67,26 @@ mouseCoordsBox.update = function (latlng) {
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
-// ---- Clicked Coordinates Box ----
-const clickedCoordsBox = L.control({ position: "bottomright" });
-clickedCoordsBox.onAdd = function () {
-  this._div = L.DomUtil.create("div", "info clicked-coords");
-  this.update();
-  return this._div;
-};
-clickedCoordsBox.update = function () {
-  this._div.innerHTML = `<strong>Clicked:</strong> <pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
-};
-clickedCoordsBox.addTo(map);
+// ---- Clicked Coordinates & Buttons Below Map ----
+const controlsContainer = document.createElement('div');
+controlsContainer.id = 'map-controls';
+controlsContainer.innerHTML = `
+  <div id="clickedCoordsBox" class="clicked-coords"></div>
+  <button id="clearBtn">Clear</button>
+  <button id="copyBtn">Copy</button>
+`;
+document.body.appendChild(controlsContainer);
 
-// ---- Buttons ----
-const buttonBox = L.control({ position: "topleft" });
-buttonBox.onAdd = function () {
-  const div = L.DomUtil.create("div", "info button-box");
-  div.innerHTML = `
-    <button id="clearBtn">Clear</button>
-    <button id="copyBtn">Copy</button>
-  `;
-  div.querySelectorAll("button").forEach(btn => btn.addEventListener("click", e => e.stopPropagation()));
-  return div;
-};
-buttonBox.addTo(map);
+const clickedCoordsBox = document.getElementById("clickedCoordsBox");
+
+function updateClickedCoords() {
+  clickedCoordsBox.innerHTML = `<strong>Clicked:</strong> <pre>${JSON.stringify(clickCoords, null, 2)}</pre>`;
+}
 
 document.getElementById("clearBtn").addEventListener("click", () => {
   clickCoords = [];
   clickMarkers.clearLayers();
-  clickedCoordsBox.update();
+  updateClickedCoords();
 });
 
 document.getElementById("copyBtn").addEventListener("click", () => {
@@ -104,10 +98,10 @@ document.getElementById("copyBtn").addEventListener("click", () => {
 map.on("click", e => {
   clickCoords.push([e.latlng.lng, e.latlng.lat]);
   L.marker(e.latlng).addTo(clickMarkers);
-  clickedCoordsBox.update();
+  updateClickedCoords();
 });
 
-// ---- Fetch Data & Build Features ----
+// ---- Fetch Data & Build Features (Turf + PanelLayers) ----
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
@@ -129,11 +123,11 @@ fetch(scriptURL)
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
       if (!category) return;
 
+      // Navigation markers
       if (category === "Navigation" && item.p1) {
         const coords = parseGeometry(item.p1);
         if (coords && coords.geometry && coords.geometry.coordinates) {
           const [lng, lat] = coords.geometry.coordinates;
-
           const triangleIcon = L.divIcon({
             className: 'navigation-marker',
             html: `<svg width="16" height="16" viewBox="0 0 16 16">
@@ -153,6 +147,7 @@ fetch(scriptURL)
         return;
       }
 
+      // Normal polygon shapes
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
