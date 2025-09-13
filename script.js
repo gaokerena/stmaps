@@ -6,6 +6,27 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
 
+// ---- Loading Overlay ----
+const loadingOverlay = L.control({ position: "topleft" });
+loadingOverlay.onAdd = function () {
+  const div = L.DomUtil.create("div", "loading-overlay");
+  div.innerHTML = `
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading...</div>
+    </div>
+  `;
+  return div;
+};
+loadingOverlay.addTo(map);
+
+function removeLoadingOverlay() {
+  const overlayEl = document.querySelector(".loading-overlay");
+  if (!overlayEl) return;
+  overlayEl.classList.add("fade-out");
+  setTimeout(() => loadingOverlay.remove(), 500);
+}
+
 // ---- Mouse Coordinates Box ----
 const mouseCoordsBox = L.control({ position: "bottomleft" });
 mouseCoordsBox.onAdd = function () {
@@ -68,6 +89,8 @@ map.on("click", e => {
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
+    removeLoadingOverlay(); // ✅ Remove overlay once data is loaded
+
     if (!Array.isArray(data) || data.length === 0) {
       alert("No data available to display.");
       return;
@@ -96,7 +119,7 @@ fetch(scriptURL)
                      <polygon points="8,0 16,16 0,16" fill="${color}" stroke="#333" stroke-width="1"/>
                    </svg>
                    <span class="navigation-label">${nom}</span>`,
-            iconSize: [120, 16],   // enough width for label
+            iconSize: [120, 16],
             iconAnchor: [8, 8],
           });
 
@@ -183,6 +206,7 @@ fetch(scriptURL)
     map.addControl(panelLayers);
   })
   .catch(err => {
+    removeLoadingOverlay(); // ✅ Remove overlay even on error
     console.error("Error fetching data:", err);
     alert("Failed to load map data.");
   });
