@@ -6,24 +6,19 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 
 let clickCoords = [];
 let clickMarkers = L.layerGroup().addTo(map);
 
-// ---- Loading Overlay ----
-const loadingOverlay = L.control({ position: "topleft" });
-loadingOverlay.onAdd = function () {
-  const div = L.DomUtil.create("div", "loading-overlay");
-  div.innerHTML = `
-    <div class="loading-content">
-      <div class="spinner"></div>
-      <div class="loading-text">Loading...</div>
-    </div>
-  `;
-  return div;
-};
-loadingOverlay.addTo(map);
+// ---- Full-Screen Loading Overlay ----
+const loadingOverlay = document.createElement("div");
+loadingOverlay.className = "loading-overlay";
+loadingOverlay.innerHTML = `
+  <div class="loading-content">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading...</div>
+  </div>
+`;
+document.getElementById("map").appendChild(loadingOverlay);
 
 function removeLoadingOverlay() {
-  const overlayEl = document.querySelector(".loading-overlay");
-  if (!overlayEl) return;
-  overlayEl.classList.add("fade-out");
+  loadingOverlay.classList.add("fade-out");
   setTimeout(() => loadingOverlay.remove(), 500);
 }
 
@@ -89,7 +84,7 @@ map.on("click", e => {
 fetch(scriptURL)
   .then(resp => resp.json())
   .then(data => {
-    removeLoadingOverlay(); // ✅ Remove overlay once data is loaded
+    removeLoadingOverlay(); // Remove overlay when data is loaded
 
     if (!Array.isArray(data) || data.length === 0) {
       alert("No data available to display.");
@@ -206,7 +201,7 @@ fetch(scriptURL)
     map.addControl(panelLayers);
   })
   .catch(err => {
-    removeLoadingOverlay(); // ✅ Remove overlay even on error
+    removeLoadingOverlay(); // Remove overlay on error
     console.error("Error fetching data:", err);
     alert("Failed to load map data.");
   });
