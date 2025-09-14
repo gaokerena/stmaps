@@ -77,7 +77,7 @@ mouseCoordsBox.update = function (latlng) {
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
-// ---- Leaflet Draw Controls ----
+// ---- Leaflet Draw Controls (Marker, Polyline, Polygon, Circle) ----
 const drawnItems = new L.FeatureGroup().addTo(map);
 const drawControl = new L.Control.Draw({
   draw: {
@@ -88,7 +88,9 @@ const drawControl = new L.Control.Draw({
     rectangle: false,
     circlemarker: false
   },
-  edit: { featureGroup: drawnItems }
+  edit: {
+    featureGroup: drawnItems
+  }
 });
 map.addControl(drawControl);
 
@@ -102,7 +104,7 @@ map.on(L.Draw.Event.CREATED, function(e) {
   }
   else if (layer instanceof L.Circle) {
     const latlng = layer.getLatLng();
-    const radiusNM = layer.getRadius() / 1852;
+    const radiusNM = layer.getRadius() / 1852; // meters to nautical miles
     clickCoords.push([latlng.lng, latlng.lat, radiusNM]);
   }
   else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
@@ -113,21 +115,6 @@ map.on(L.Draw.Event.CREATED, function(e) {
   }
 
   updateClickedCoords();
-});
-
-// ---- Shape Style Sliders ----
-const lineWidthSlider = document.getElementById("lineWidthSlider");
-const lineWidthValue = document.getElementById("lineWidthValue");
-const fillOpacitySlider = document.getElementById("fillOpacitySlider");
-const fillOpacityValue = document.getElementById("fillOpacityValue");
-
-lineWidthSlider.addEventListener('input', () => {
-  lineWidthValue.innerText = lineWidthSlider.value;
-  drawnItems.eachLayer(layer => { if (layer.setStyle) layer.setStyle({ weight: parseFloat(lineWidthSlider.value) }); });
-});
-fillOpacitySlider.addEventListener('input', () => {
-  fillOpacityValue.innerText = fillOpacitySlider.value;
-  drawnItems.eachLayer(layer => { if (layer.setStyle) layer.setStyle({ fillOpacity: parseFloat(fillOpacitySlider.value) }); });
 });
 
 // ---- Fetch Turf Data & PanelLayers ----
@@ -147,6 +134,28 @@ fetch(scriptURL)
       if (color && color[0] !== "#") color = "#" + color;
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
       if (!category) return;
+
+      if (category === "Navigation" && item.p1) {
+        const coords = parseGeometry(item.p1);
+        if (coords && coords.geometry && coords.geometry.coordinates) {
+          const [lng, lat] = coords.geometry.coordinates;
+          const triangleIcon = L.divIcon({
+            className: 'navigation-marker',
+            html: `<svg width="16" height="16" viewBox="0 0 16 16">
+                     <polygon points="8,0 16,16 0,16" fill="${color}" stroke="#333" stroke-width="1"/>
+                   </svg>
+                   <span class="navigation-label">${nom}</span>`,
+            iconSize: [120, 16],
+            iconAnchor: [8, 8],
+          });
+
+          const marker = L.marker([lat, lng], { icon: triangleIcon });
+          if (!categoryGroups[category]) categoryGroups[category] = {};
+          if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
+          categoryGroups[category][couche].push(marker);
+        }
+        return;
+      }
 
       const quads = [
         [item.p1, item.intp1, item.exp1],
@@ -180,7 +189,7 @@ fetch(scriptURL)
       if(!combined) return;
 
       const layer = L.geoJSON(combined,{
-        color, fillColor: color, weight: parseFloat(lineWidthSlider.value), fillOpacity: parseFloat(fillOpacitySlider.value)
+        color, fillColor: color, weight:2, fillOpacity:0.3
       }).bindTooltip(
         `<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,
         { sticky: true }
