@@ -1,12 +1,12 @@
 body {
   font-family: Arial, sans-serif;
   margin: 0;
-  background: #404246;
 }
 
 #banner {
   background: #0e1118;
   color: #fafafa;
+  border-bottom: 3px solid #ff4b4b;
 }
 
 /* Map container */
@@ -33,47 +33,52 @@ body {
   margin-left: 5px;
 }
 
-/* Slider track */
+/* Slider colors */
 #opacitySlider {
   -webkit-appearance: none;
-  width: 120px;
+  width: 160px;
   height: 6px;
-  background: #ff4b4b; /* Track color */
+  background: #d0d0d1; /* unfilled track */
   border-radius: 3px;
   outline: none;
-  margin-left: 5px;
 }
 
-/* Slider thumb */
+/* Chrome / Safari filled track via thumb */
 #opacitySlider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  appearance: none;
   width: 16px;
   height: 16px;
-  background: #ff6600; /* Thumb color */
-  cursor: pointer;
+  background: #ff4b4b; /* thumb color */
   border-radius: 50%;
-  border: 2px solid #333;
+  border: 2px solid #fff;
+  cursor: pointer;
 }
 
+/* Firefox track and thumb */
+#opacitySlider::-moz-range-track {
+  height: 6px;
+  background: #d0d0d1;
+  border-radius: 3px;
+}
+#opacitySlider::-moz-range-progress {
+  background: #ff4b4b;
+  height: 6px;
+  border-radius: 3px;
+}
 #opacitySlider::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  background: #ff6600; /* Firefox */
-  cursor: pointer;
+  background: #ff4b4b;
   border-radius: 50%;
-  border: 2px solid #333;
+  border: 2px solid #fff;
+  cursor: pointer;
 }
-
-
-.leaflet-control-layers-panel,
-.leaflet-panel-layers .leaflet-control-layers-list {
-    min-width: 450px;
 
 /* Controls below map */
 #map-controls {
   margin: 10px;
 }
+
 .clicked-coords {
   font-family: monospace;
   font-size: 13px;
@@ -96,7 +101,7 @@ body {
   font-weight: bold;
 }
 #map-controls button:hover {
-  background-color: #0056b3;
+  background-color: #cc3c3c;
 }
 
 /* Mouse coordinates box (bottom-left) */
