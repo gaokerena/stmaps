@@ -1,6 +1,7 @@
 body {
   font-family: Arial, sans-serif;
   margin: 0;
+  background: #0e1118;
 }
 
 #banner {
@@ -16,61 +17,54 @@ body {
   position: relative;
 }
 
-/* Overlay opacity control (top-right) */
-#overlayControl {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: white;
-  padding: 5px 10px;
+/* Leaflet overlay opacity control (bottom-left above mouse coords) */
+.overlay-opacity-control {
+  background: #0e1118;
+  color: #fff;
+  padding: 6px 10px;
   border-radius: 5px;
   box-shadow: 0 0 5px rgba(0,0,0,0.3);
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 180px;
+  font-size: 13px;
   z-index: 10000;
 }
-#overlayControl input[type="range"] {
-  vertical-align: middle;
-  margin-left: 5px;
-}
 
-/* Slider colors */
-#opacitySlider {
+/* Slider styling */
+.overlay-opacity-control input[type="range"] {
+  flex: 1;
   -webkit-appearance: none;
-  width: 160px;
+  appearance: none;
   height: 6px;
   background: #d0d0d1; /* unfilled track */
   border-radius: 3px;
   outline: none;
 }
-
-/* Chrome / Safari filled track via thumb */
-#opacitySlider::-webkit-slider-thumb {
+.overlay-opacity-control input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  background: #ff4b4b; /* thumb color */
+  background: #ff4b4b;
   border-radius: 50%;
-  border: 2px solid #fff;
   cursor: pointer;
 }
-
-/* Firefox track and thumb */
-#opacitySlider::-moz-range-track {
+.overlay-opacity-control input[type="range"]::-moz-range-track {
   height: 6px;
   background: #d0d0d1;
   border-radius: 3px;
 }
-#opacitySlider::-moz-range-progress {
+.overlay-opacity-control input[type="range"]::-moz-range-progress {
   background: #ff4b4b;
   height: 6px;
   border-radius: 3px;
 }
-#opacitySlider::-moz-range-thumb {
+.overlay-opacity-control input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
   background: #ff4b4b;
   border-radius: 50%;
-  border: 2px solid #fff;
   cursor: pointer;
 }
 
@@ -83,10 +77,10 @@ body {
   font-family: monospace;
   font-size: 13px;
   margin-bottom: 5px;
-  display: flex;        /* inline layout */
-  flex-wrap: wrap;      /* wrap only if container full */
-  gap: 8px;             /* spacing between coordinates */
-  white-space: normal;  /* allow wrapping */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  white-space: normal;
 }
 
 /* Buttons */
