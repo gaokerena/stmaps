@@ -117,9 +117,6 @@ map.on(L.Draw.Event.CREATED, function(e) {
   updateClickedCoords();
 });
 
-// ---- Keep track of pinned tooltips ----
-const pinnedTooltips = [];
-
 // ---- Fetch Turf Data & PanelLayers ----
 fetch(scriptURL)
   .then(resp => resp.json())
@@ -193,23 +190,10 @@ fetch(scriptURL)
 
       const layer = L.geoJSON(combined,{
         color, fillColor: color, weight:2, fillOpacity:0.3
-      }).bindTooltip(`<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,{sticky:true});
-
-      // Hover tooltip
-      layer.on("mouseover", e => layer.openTooltip());
-      layer.on("mouseout", e => {
-        if (!pinnedTooltips.includes(layer.getTooltip())) layer.closeTooltip();
-      });
-
-      // Click to pin tooltip at clicked location
-      layer.on("click", e => {
-        const tooltip = layer.getTooltip();
-        tooltip.setLatLng(e.latlng); // pin at click location
-        if (!map.hasLayer(tooltip)) {
-          tooltip.addTo(map);
-          pinnedTooltips.push(tooltip);
-        }
-      });
+      }).bindTooltip(
+        `<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,
+        { sticky: true }
+      );
 
       if(!categoryGroups[category]) categoryGroups[category]={};
       if(!categoryGroups[category][couche]) categoryGroups[category][couche]=[];
