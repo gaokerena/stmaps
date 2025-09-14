@@ -12,13 +12,13 @@ const whiteOverlay = L.rectangle([[-90,-180],[90,180]], {
   interactive: false
 }).addTo(map);
 
-// ---- Overlay Opacity Leaflet Control ----
+// ---- Overlay Opacity Leaflet Control (Top-left, right of zoom controls) ----
 const OverlayOpacityControl = L.Control.extend({
-  options: { position: 'bottomleft' },
+  options: { position: 'topleft' }, // top-left for zoom control alignment
   onAdd: function(map) {
     const container = L.DomUtil.create('div', 'overlay-opacity-control');
     container.innerHTML = `
-      <label for="opacitySlider">Overlay Opacity:</label>
+      <label for="opacitySlider">Fond blanc:</label>
       <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.3">
       <span id="opacityValue">30%</span>
     `;
@@ -37,6 +37,7 @@ const OverlayOpacityControl = L.Control.extend({
   }
 });
 map.addControl(new OverlayOpacityControl());
+
 
 // ---- Clicked Coordinates Box + Buttons ----
 let clickCoords = [];
