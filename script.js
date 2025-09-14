@@ -62,6 +62,16 @@ function removeLoadingOverlay() {
   setTimeout(() => loadingOverlay.remove(), 500);
 }
 
+// ---- Convert decimal degrees to DMS ----
+function toDMS(deg, isLat) {
+  const absolute = Math.abs(deg);
+  const d = Math.floor(absolute);
+  const m = Math.floor((absolute - d) * 60);
+  const s = Math.floor(((absolute - d - m/60) * 3600));
+  const direction = isLat ? (deg >= 0 ? "N" : "S") : (deg >= 0 ? "E" : "W");
+  return `${d}°${m}'${s}"${direction}`;
+}
+
 // ---- Mouse Coordinates Box ----
 const mouseCoordsBox = L.control({ position: "bottomleft" });
 mouseCoordsBox.onAdd = function () {
@@ -70,9 +80,13 @@ mouseCoordsBox.onAdd = function () {
   return this._div;
 };
 mouseCoordsBox.update = function (latlng) {
-  this._div.innerHTML = latlng
-    ? `<strong>Mouse:</strong> [${latlng.lng.toFixed(6)}, ${latlng.lat.toFixed(6)}]`
-    : `<strong>Mouse:</strong> Move over map`;
+  if (!latlng) {
+    this._div.innerHTML = `<strong>Mouse:</strong> Move over map`;
+    return;
+  }
+  const dec = `[${latlng.lng.toFixed(6)}, ${latlng.lat.toFixed(6)}]`;
+  const dms = `${toDMS(latlng.lat,true)}, ${toDMS(latlng.lng,false)}`;
+  this._div.innerHTML = `<strong>Mouse:</strong> ${dec} | ${dms}`;
 };
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
@@ -211,18 +225,8 @@ fetch(scriptURL)
       overlays.push({group:cat,layers:layersArray,collapsed:true});
     });
 
-    // ---- Add PanelLayers ----
     const panelLayersControl = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayersControl);
-
-    // ---- Make Panel 30% wider ----
-    setTimeout(() => {
-      const panelEl = document.querySelector('.leaflet-control-layers-panel');
-      if (panelEl) {
-        const currentWidth = panelEl.offsetWidth;
-        panelEl.style.width = `${Math.round(currentWidth * 1.3)}px`;
-      }
-    }, 100);
 
   }).catch(err=>{removeLoadingOverlay(); console.error(err); alert("Failed to load map data.");});
 
