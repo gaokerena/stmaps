@@ -22,7 +22,7 @@ opacitySlider.addEventListener('input', e => {
   opacityValue.innerText = `${Math.round(value*100)}%`;
 });
 
-// ---- Clicked Coordinates Box + Buttons ----
+// ---- Click Coordinates Box + Buttons ----
 let clickCoords = [];
 const clickedCoordsBox = document.getElementById("clickedCoordsBox");
 const clearBtn = document.getElementById("clearBtn");
@@ -135,6 +135,7 @@ fetch(scriptURL)
       if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
       if (!category) return;
 
+      // Navigation markers
       if (category === "Navigation" && item.p1) {
         const coords = parseGeometry(item.p1);
         if (coords && coords.geometry && coords.geometry.coordinates) {
@@ -157,6 +158,7 @@ fetch(scriptURL)
         return;
       }
 
+      // Normal polygon shapes
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
@@ -188,9 +190,20 @@ fetch(scriptURL)
       });
       if(!combined) return;
 
+      // ---- Tooltip toggle on click, hover still works ----
       const layer = L.geoJSON(combined,{
         color, fillColor: color, weight:2, fillOpacity:0.3
-      }).bindTooltip(`<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,{sticky:true});
+      }).bindTooltip(
+        `<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,
+        { sticky: true }
+      );
+
+      let tooltipPinned = false;
+      layer.on("click", function () {
+        tooltipPinned = !tooltipPinned;
+        if (tooltipPinned) layer.openTooltip();
+        else layer.closeTooltip();
+      });
 
       if(!categoryGroups[category]) categoryGroups[category]={};
       if(!categoryGroups[category][couche]) categoryGroups[category][couche]=[];
