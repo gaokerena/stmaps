@@ -20,8 +20,8 @@ body {
 /* Overlay opacity control now like mouse coordinates box */
 .overlay-opacity-control {
   position: absolute;
-  top: 10px;  /* aligns with zoom controls */
-  left: 10px;
+  top: 5px;  /* aligns with zoom controls */
+  left: 20px;
   background: white;
   color: black;
   padding: 5px 10px;
@@ -68,6 +68,11 @@ body {
   background: #ff4b4b;
   border-radius: 50%;
   cursor: pointer;
+}
+
+.leaflet-panel-layers.expanded {
+  padding: 4px;
+  min-width: 150px;
 }
 
 /* Controls below map */
