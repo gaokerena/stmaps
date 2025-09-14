@@ -29,7 +29,7 @@ body {
 
 .leaflet-control-layers-panel,
 .leaflet-panel-layers .leaflet-control-layers-list {
-    min-width: 300px;
+    min-width: 450px;
 
 /* Controls below map */
 #map-controls {
