@@ -1,12 +1,11 @@
-html {
+html, body {
   margin: 0;
   padding: 0;
+  height: 100%;
 }
 
 body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
+  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   background: #ffffff;
 }
 
@@ -17,11 +16,16 @@ body {
   padding: 0;
   background: #f6f8fa;
   border-bottom: 3px solid #d1d9e0;
+  display: flex;
+  align-items: center;
 }
 
-h1 {
+#topbanner h1 {
+  margin: 0;
+  padding: 0;
   margin-left: 5%;
   color: #1f2328;
+  font-size: 1.8em; /* optional */
 }
 
 #main {
