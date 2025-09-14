@@ -190,7 +190,7 @@ fetch(scriptURL)
 
       const layer = L.geoJSON(combined,{
         color, fillColor: color, weight:2, fillOpacity:0.3
-      }).bindTooltip(`<strong>${nom}</strong><br>Plancher: ${item.plancher}<br>Plafond: ${item.plafond}`,{sticky:true});
+      }).bindTooltip(`<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,{sticky:true});
 
       if(!categoryGroups[category]) categoryGroups[category]={};
       if(!categoryGroups[category][couche]) categoryGroups[category][couche]=[];
