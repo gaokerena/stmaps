@@ -1,6 +1,12 @@
 body {
   font-family: Arial, sans-serif;
   margin: 0;
+  background: #404246;
+}
+
+#banner {
+  background: #0e1118;
+  color: #fafafa;
 }
 
 /* Map container */
@@ -27,6 +33,39 @@ body {
   margin-left: 5px;
 }
 
+/* Slider track */
+#opacitySlider {
+  -webkit-appearance: none;
+  width: 120px;
+  height: 6px;
+  background: #ff4b4b; /* Track color */
+  border-radius: 3px;
+  outline: none;
+  margin-left: 5px;
+}
+
+/* Slider thumb */
+#opacitySlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #ff6600; /* Thumb color */
+  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid #333;
+}
+
+#opacitySlider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #ff6600; /* Firefox */
+  cursor: pointer;
+  border-radius: 50%;
+  border: 2px solid #333;
+}
+
+
 .leaflet-control-layers-panel,
 .leaflet-panel-layers .leaflet-control-layers-list {
     min-width: 450px;
@@ -52,7 +91,7 @@ body {
   cursor: pointer;
   border: none;
   border-radius: 4px;
-  background-color: #007bff;
+  background-color: #ff4b4b;
   color: white;
   font-weight: bold;
 }
