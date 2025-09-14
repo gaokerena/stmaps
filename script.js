@@ -77,42 +77,26 @@ mouseCoordsBox.update = function (latlng) {
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
-// ---- Leaflet Draw Controls (Marker, Polyline, Polygon, Circle) ----
+// ---- Leaflet Draw Controls ----
 const drawnItems = new L.FeatureGroup().addTo(map);
 const drawControl = new L.Control.Draw({
-  draw: {
-    polyline: true,
-    polygon: true,
-    circle: true,
-    marker: true,
-    rectangle: false,
-    circlemarker: false
-  },
-  edit: {
-    featureGroup: drawnItems
-  }
+  draw: { polyline:true, polygon:true, circle:true, marker:true, rectangle:false, circlemarker:false },
+  edit: { featureGroup: drawnItems }
 });
 map.addControl(drawControl);
 
-// ---- Handle Draw Created ----
 map.on(L.Draw.Event.CREATED, function(e) {
   const layer = e.layer;
   drawnItems.addLayer(layer);
 
-  if (layer instanceof L.Marker) {
-    clickCoords.push([layer.getLatLng().lng, layer.getLatLng().lat]);
-  }
+  if (layer instanceof L.Marker) clickCoords.push([layer.getLatLng().lng, layer.getLatLng().lat]);
   else if (layer instanceof L.Circle) {
     const latlng = layer.getLatLng();
-    const radiusNM = layer.getRadius() / 1852; // meters to nautical miles
+    const radiusNM = layer.getRadius() / 1852;
     clickCoords.push([latlng.lng, latlng.lat, radiusNM]);
   }
-  else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-    layer.getLatLngs().forEach(p => clickCoords.push([p.lng, p.lat]));
-  }
-  else if (layer instanceof L.Polygon) {
-    layer.getLatLngs()[0].forEach(p => clickCoords.push([p.lng, p.lat]));
-  }
+  else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) layer.getLatLngs().forEach(p => clickCoords.push([p.lng, p.lat]));
+  else if (layer instanceof L.Polygon) layer.getLatLngs()[0].forEach(p => clickCoords.push([p.lng, p.lat]));
 
   updateClickedCoords();
 });
@@ -131,31 +115,12 @@ fetch(scriptURL)
       const couche = (item.couche || "Default").trim();
       const nom = (item.nom || "Shape").trim();
       let color = (item.couleur || "").trim();
-      if (color && color[0] !== "#") color = "#" + color;
-      if (!/^#([0-9A-F]{6})$/i.test(color)) color = "#3388ff";
+      if (color && color[0]!=="#") color="#" + color;
+      if (!/^#([0-9A-F]{6})$/i.test(color)) color="#3388ff";
       if (!category) return;
 
-      if (category === "Navigation" && item.p1) {
-        const coords = parseGeometry(item.p1);
-        if (coords && coords.geometry && coords.geometry.coordinates) {
-          const [lng, lat] = coords.geometry.coordinates;
-          const triangleIcon = L.divIcon({
-            className: 'navigation-marker',
-            html: `<svg width="16" height="16" viewBox="0 0 16 16">
-                     <polygon points="8,0 16,16 0,16" fill="${color}" stroke="#333" stroke-width="1"/>
-                   </svg>
-                   <span class="navigation-label">${nom}</span>`,
-            iconSize: [120, 16],
-            iconAnchor: [8, 8],
-          });
-
-          const marker = L.marker([lat, lng], { icon: triangleIcon });
-          if (!categoryGroups[category]) categoryGroups[category] = {};
-          if (!categoryGroups[category][couche]) categoryGroups[category][couche] = [];
-          categoryGroups[category][couche].push(marker);
-        }
-        return;
-      }
+      const strokeWidth = item.epaisseur ? parseFloat(item.epaisseur) : 2;
+      const fillOpacity = item.opacity ? parseFloat(item.opacity) : 0.3;
 
       const quads = [
         [item.p1, item.intp1, item.exp1],
@@ -165,71 +130,53 @@ fetch(scriptURL)
       ];
 
       let combined = null;
-      quads.forEach(([geom, intGeom, expGeom]) => {
-        if (!geom) return;
+      quads.forEach(([geom,intGeom,expGeom])=>{
+        if(!geom) return;
         let feature = parseGeometry(geom);
-        if (!feature) return;
-        if (intGeom) {
-          const intFeature = parseGeometry(intGeom);
-          if (intFeature) {
-            try { const intersection = turf.intersect(feature,intFeature); if(intersection) feature=intersection;} 
-            catch(e){console.warn("Intersection failed",e);}
-          }
-        }
-        if(expGeom){
-          const expFeature=parseGeometry(expGeom);
-          if(expFeature){
-            try{ const diff = turf.difference(feature,expFeature); if(diff) feature=diff; else return;}
-            catch(e){console.warn("Difference failed",e);}
-          }
-        }
+        if(!feature) return;
+        if(intGeom){ const intFeature = parseGeometry(intGeom); if(intFeature){ try{ const intersection=turf.intersect(feature,intFeature); if(intersection) feature=intersection;}catch(e){console.warn("Intersection failed",e); } } }
+        if(expGeom){ const expFeature=parseGeometry(expGeom); if(expFeature){ try{ const diff=turf.difference(feature,expFeature); if(diff) feature=diff; else return;}catch(e){console.warn("Difference failed",e);} } }
         if(!combined) combined=feature;
-        else{try{combined=turf.union(combined,feature);}catch(e){console.warn("Union failed",e);}}
+        else{ try{ combined=turf.union(combined,feature); }catch(e){console.warn("Union failed",e);} }
       });
       if(!combined) return;
 
       const layer = L.geoJSON(combined,{
-        color, fillColor: color, weight:2, fillOpacity:0.3
-      }).bindTooltip(
-        `<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,
-        { sticky: true }
-      );
+        color, fillColor: color, weight: strokeWidth, fillOpacity
+      }).bindTooltip(`<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`, { sticky:true });
 
       if(!categoryGroups[category]) categoryGroups[category]={};
       if(!categoryGroups[category][couche]) categoryGroups[category][couche]=[];
       categoryGroups[category][couche].push(layer);
     });
 
-    const overlays=[];
+    const overlays = [];
     Object.entries(categoryGroups).forEach(([cat,coucheLayers])=>{
-      const layersArray=Object.entries(coucheLayers).map(([couche,shapes])=>{
-        const groupLayer=L.layerGroup(shapes);
-        return {name:couche,layer:groupLayer};
+      const layersArray = Object.entries(coucheLayers).map(([couche,shapes])=>{
+        return { name: couche, layer: L.layerGroup(shapes) };
       });
-      overlays.push({group:cat,layers:layersArray,collapsed:true});
+      overlays.push({ group: cat, layers: layersArray, collapsed: true });
     });
 
     const panelLayers = new L.Control.PanelLayers(null, overlays, { collapsibleGroups: true });
     map.addControl(panelLayers);
-
-  }).catch(err=>{removeLoadingOverlay(); console.error(err); alert("Failed to load map data.");});
+  })
+  .catch(err=>{ removeLoadingOverlay(); console.error(err); alert("Failed to load map data."); });
 
 // ---- Geometry Parser ----
 function parseGeometry(obj){
   if(!obj) return null;
   try{
-    const parsed=typeof obj==="string"?JSON.parse(obj):obj;
-    if(parsed.center && parsed.radius)
-      return turf.circle(parsed.center, parsed.radius, parsed.options||{});
+    const parsed = typeof obj==="string"?JSON.parse(obj):obj;
+    if(parsed.center && parsed.radius) return turf.circle(parsed.center, parsed.radius, parsed.options||{});
     if(Array.isArray(parsed)){
-      if(parsed.length===2 && typeof parsed[0]==="number" && typeof parsed[1]==="number")
-        return turf.point(parsed);
+      if(parsed.length===2 && typeof parsed[0]==="number" && typeof parsed[1]==="number") return turf.point(parsed);
       if(parsed.length>1 && Array.isArray(parsed[0])){
-        const first=parsed[0],last=parsed[parsed.length-1];
+        const first=parsed[0], last=parsed[parsed.length-1];
         if(first[0]===last[0] && first[1]===last[1]) return turf.polygon([parsed]);
         return turf.lineString(parsed);
       }
     }
-  }catch(e){console.warn("Invalid geometry:",obj,e);}
+  }catch(e){ console.warn("Invalid geometry:", obj,e); }
   return null;
 }
