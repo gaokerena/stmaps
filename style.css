@@ -4,21 +4,21 @@ body {
   background: #ffffff;
 }
 
-#banner {
+#topbanner {
   background: ##f6f8fa;
   color: #1f2328;
   border-bottom: 3px solid #fd8c73;
 }
 
 #main {
-  width: 90%;
+  width: 97%;
   margin: 10px auto;
   border: 3px solid #d1d9e0;
 }
 
 /* Map container */
 #map {
-  height: 900px;
+  height: 1100px;
   width: 100%;
   position: relative;
 }
