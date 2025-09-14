@@ -16,6 +16,11 @@ body {
   border: 3px solid #d1d9e0;
 }
 
+#secondary {
+  width: 97%;
+  margin: 10px auto;
+}
+
 /* Map container */
 #map {
   height: 1100px;
