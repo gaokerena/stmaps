@@ -17,28 +17,30 @@ body {
   position: relative;
 }
 
-/* Leaflet overlay opacity control (bottom-left above mouse coords) */
+/* Overlay opacity control now like mouse coordinates box */
 .overlay-opacity-control {
-  background: #0e1118;
-  color: #fff;
-  padding: 6px 10px;
+  position: absolute;
+  top: 10px;  /* aligns with zoom controls */
+  left: 10px;
+  background: white;
+  color: black;
+  padding: 5px 10px;
   border-radius: 5px;
   box-shadow: 0 0 5px rgba(0,0,0,0.3);
+  font-size: 14px;
+  z-index: 1000;
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 180px;
-  font-size: 13px;
-  z-index: 10000;
+  white-space: nowrap;
 }
 
-/* Slider styling */
 .overlay-opacity-control input[type="range"] {
   flex: 1;
   -webkit-appearance: none;
   appearance: none;
   height: 6px;
-  background: #d0d0d1; /* unfilled track */
+  background: #d0d0d1;
   border-radius: 3px;
   outline: none;
 }
