@@ -27,6 +27,11 @@ body {
   margin-left: 5px;
 }
 
+.leaflet-control-layers-panel {
+  min-width: 300px;
+}
+
+
 /* Controls below map */
 #map-controls {
   margin: 10px;
