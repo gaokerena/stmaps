@@ -5,13 +5,15 @@ body {
 }
 
 #topbanner {
+  height: 50px;
+  margin-top: 0px;
   background: #f6f8fa;
   border-bottom: 3px solid #d1d9e0;
 }
 
 h1 {
   margin-left: 5%;
-  color : #fd8c73;
+  color: #1f2328;
 }
 
 #main {
@@ -36,7 +38,7 @@ h1 {
 .overlay-opacity-control {
   position: absolute;
   top: 3px;  /* aligns with zoom controls */
-  left: 30px;
+  left: 40px;
   background: white;
   color: black;
   padding: 5px 10px;
@@ -55,7 +57,7 @@ h1 {
   -webkit-appearance: none;
   appearance: none;
   height: 6px;
-  background: #d0d0d1;
+  background: #f6f8fa;
   border-radius: 3px;
   outline: none;
 }
@@ -63,24 +65,24 @@ h1 {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  background: #ff4b4b;
+  background: #fd8c73;
   border-radius: 50%;
   cursor: pointer;
 }
 .overlay-opacity-control input[type="range"]::-moz-range-track {
   height: 6px;
-  background: #d0d0d1;
+  background: #f6f8fa;
   border-radius: 3px;
 }
 .overlay-opacity-control input[type="range"]::-moz-range-progress {
-  background: #ff4b4b;
+  background: #fd8c73;
   height: 6px;
   border-radius: 3px;
 }
 .overlay-opacity-control input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  background: #ff4b4b;
+  background: #fd8c73;
   border-radius: 50%;
   cursor: pointer;
 }
@@ -112,12 +114,12 @@ h1 {
   cursor: pointer;
   border: none;
   border-radius: 4px;
-  background-color: #ff4b4b;
+  background-color: #fd8c73;
   color: white;
   font-weight: bold;
 }
 #map-controls button:hover {
-  background-color: #cc3c3c;
+  background-color: #fc6b4A;
 }
 
 /* Mouse coordinates box (bottom-left) */
