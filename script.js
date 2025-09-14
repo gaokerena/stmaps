@@ -22,7 +22,7 @@ opacitySlider.addEventListener('input', e => {
   opacityValue.innerText = `${Math.round(value*100)}%`;
 });
 
-// ---- Click Coordinates Box + Buttons ----
+// ---- Clicked Coordinates Box + Buttons ----
 let clickCoords = [];
 const clickedCoordsBox = document.getElementById("clickedCoordsBox");
 const clearBtn = document.getElementById("clearBtn");
@@ -101,16 +101,13 @@ map.on(L.Draw.Event.CREATED, function(e) {
 
   if (layer instanceof L.Marker) {
     clickCoords.push([layer.getLatLng().lng, layer.getLatLng().lat]);
-  }
-  else if (layer instanceof L.Circle) {
+  } else if (layer instanceof L.Circle) {
     const latlng = layer.getLatLng();
     const radiusNM = layer.getRadius() / 1852; // meters to nautical miles
     clickCoords.push([latlng.lng, latlng.lat, radiusNM]);
-  }
-  else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+  } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
     layer.getLatLngs().forEach(p => clickCoords.push([p.lng, p.lat]));
-  }
-  else if (layer instanceof L.Polygon) {
+  } else if (layer instanceof L.Polygon) {
     layer.getLatLngs()[0].forEach(p => clickCoords.push([p.lng, p.lat]));
   }
 
@@ -158,7 +155,7 @@ fetch(scriptURL)
         return;
       }
 
-      // Normal polygon shapes
+      // Turf polygons
       const quads = [
         [item.p1, item.intp1, item.exp1],
         [item.p2, item.intp2, item.exp2],
@@ -190,19 +187,21 @@ fetch(scriptURL)
       });
       if(!combined) return;
 
-      // ---- Tooltip toggle on click, hover still works ----
       const layer = L.geoJSON(combined,{
         color, fillColor: color, weight:2, fillOpacity:0.3
-      }).bindTooltip(
-        `<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,
-        { sticky: true }
-      );
+      }).bindTooltip(`<strong>${nom}</strong><br>Plafond: ${item.plafond}<br>Plancher: ${item.plancher}`,{sticky:true});
 
-      let tooltipPinned = false;
-      layer.on("click", function () {
-        tooltipPinned = !tooltipPinned;
-        if (tooltipPinned) layer.openTooltip();
-        else layer.closeTooltip();
+      // ---- Tooltip pin on click (multiple allowed) ----
+      layer.eachLayer(l => {
+        l.on('click', function(e){
+          if(!l._pinnedTooltip){
+            l.openTooltip(e.latlng);
+            l._pinnedTooltip = true;
+          } else {
+            l.closeTooltip();
+            l._pinnedTooltip = false;
+          }
+        });
       });
 
       if(!categoryGroups[category]) categoryGroups[category]={};
