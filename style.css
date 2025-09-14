@@ -5,9 +5,13 @@ body {
 }
 
 #topbanner {
-  background: ##f6f8fa;
-  color: #1f2328;
-  border-bottom: 3px solid #fd8c73;
+  background: #f6f8fa;
+  border-bottom: 3px solid #d1d9e0;
+}
+
+h1 {
+  margin-left: 5%;
+  color : #fd8c73;
 }
 
 #main {
@@ -31,8 +35,8 @@ body {
 /* Overlay opacity control now like mouse coordinates box */
 .overlay-opacity-control {
   position: absolute;
-  top: 5px;  /* aligns with zoom controls */
-  left: 20px;
+  top: 3px;  /* aligns with zoom controls */
+  left: 30px;
   background: white;
   color: black;
   padding: 5px 10px;
