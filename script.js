@@ -12,9 +12,9 @@ const whiteOverlay = L.rectangle([[-90,-180],[90,180]], {
   interactive: false
 }).addTo(map);
 
-// ---- Overlay Opacity Leaflet Control (Top-left, right of zoom controls) ----
+// ---- Overlay Opacity Leaflet Control ----
 const OverlayOpacityControl = L.Control.extend({
-  options: { position: 'topleft' }, // top-left for zoom control alignment
+  options: { position: 'topleft' },
   onAdd: function(map) {
     const container = L.DomUtil.create('div', 'overlay-opacity-control');
     container.innerHTML = `
@@ -37,7 +37,6 @@ const OverlayOpacityControl = L.Control.extend({
   }
 });
 map.addControl(new OverlayOpacityControl());
-
 
 // ---- Clicked Coordinates Box + Buttons ----
 let clickCoords = [];
@@ -105,7 +104,7 @@ mouseCoordsBox.update = function (latlng) {
 mouseCoordsBox.addTo(map);
 map.on("mousemove", e => mouseCoordsBox.update(e.latlng));
 
-// ---- Leaflet Draw Controls (Marker, Polyline, Polygon, Circle) ----
+// ---- Leaflet Draw Controls ----
 const drawnItems = new L.FeatureGroup().addTo(map);
 const drawControl = new L.Control.Draw({
   draw: { polyline:true, polygon:true, circle:true, marker:true, rectangle:false, circlemarker:false },
@@ -147,8 +146,14 @@ fetch(scriptURL).then(resp => resp.json()).then(data => {
         const [lng,lat]=coords.geometry.coordinates;
         const triangleIcon=L.divIcon({
           className:'navigation-marker',
-          html:`<svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,0 16,16 0,16" fill="${color}" stroke="#333" stroke-width="1"/></svg><span class="navigation-label">${nom}</span>`,
-          iconSize:[120,16], iconAnchor:[8,8]
+          html:`
+            <svg width="12" height="12" viewBox="0 0 12 12">
+              <polygon points="6,0 12,12 0,12" fill="${color}" stroke="#333" stroke-width="1"/>
+            </svg>
+            <span class="navigation-label">${nom}</span>
+          `,
+          iconSize:[100,12],
+          iconAnchor:[6,6]
         });
         const marker=L.marker([lat,lng],{icon:triangleIcon});
         categoryGroups[category]??={}; categoryGroups[category][couche]??=[]; categoryGroups[category][couche].push(marker);
@@ -156,6 +161,7 @@ fetch(scriptURL).then(resp => resp.json()).then(data => {
       return;
     }
 
+    // ---- Other geometries (quad polygons) ----
     const quads=[[item.p1,item.intp1,item.exp1],[item.p2,item.intp2,item.exp2],[item.p3,item.intp3,item.exp3],[item.p4,item.intp4,item.exp4]];
     let combined=null;
     quads.forEach(([geom,intGeom,expGeom])=>{
