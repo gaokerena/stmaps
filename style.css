@@ -156,8 +156,8 @@ body {
 }
 .navigation-marker svg {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
 }
 .navigation-marker svg polygon {
   stroke: #333;
