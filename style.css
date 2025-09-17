@@ -25,7 +25,7 @@ body {
   padding: 0;
   margin-left: 5%;
   color: #1f2328;
-  font-size: 1.8em; /* optional */
+  font-size: 1.8em;
 }
 
 #main {
@@ -46,10 +46,10 @@ body {
   position: relative;
 }
 
-/* Overlay opacity control now like mouse coordinates box */
+/* Overlay opacity control (top-left) */
 .overlay-opacity-control {
   position: absolute;
-  top: 3px;  /* aligns with zoom controls */
+  top: 3px;
   left: 40px;
   background: white;
   color: black;
@@ -73,6 +73,7 @@ body {
   border-radius: 3px;
   outline: none;
 }
+
 .overlay-opacity-control input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
@@ -81,16 +82,19 @@ body {
   border-radius: 50%;
   cursor: pointer;
 }
+
 .overlay-opacity-control input[type="range"]::-moz-range-track {
   height: 6px;
   background: #f6f8fa;
   border-radius: 3px;
 }
+
 .overlay-opacity-control input[type="range"]::-moz-range-progress {
   background: #fd8c73;
   height: 6px;
   border-radius: 3px;
 }
+
 .overlay-opacity-control input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
@@ -167,10 +171,10 @@ body {
   font-weight: bold;
   font-size: 13px;
   color: #333;
-  background: rgba(255,255,255,0); /*Changed here*/
+  background: rgba(255,255,255,0);
   padding: 1px 4px;
   border-radius: 3px;
-  box-shadow: 0 0 2px rgba(0,0,0,0); /*Changed here*/
+  box-shadow: 0 0 2px rgba(0,0,0,0);
   white-space: nowrap;
   margin-left: 4px;
 }
