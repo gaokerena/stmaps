@@ -1,46 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>STmaps</title>
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <!-- Leaflet Draw CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
-  <!-- Leaflet Panel Layers CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-panel-layers@1.3.1/dist/leaflet-panel-layers.min.css">
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zones AIP</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  iframe { border: 0; width: 100%; height: 100%; display: block; }
+</style>
 </head>
 <body>
-  <div id="topbanner">
-    <h1>Cartographie</h1>
-  </div>
-
-  <div id="main">
-      <!-- Map container -->
-    <div id="map">
-    </div>      
-  </div>
-  <div id="secondary">
-    <!-- Controls below map -->
-      <div id="map-controls">
-      <div id="clickedCoordsBox" class="clicked-coords"></div>
-      <button id="clearBtn">Clear</button>
-      <button id="copyBtn">Copy</button>
-    </div>
-
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Leaflet Draw JS -->
-  <script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <!-- Turf.js -->
-  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <!-- Leaflet Panel Layers JS -->
-  <script src="https://cdn.jsdelivr.net/npm/leaflet-panel-layers@1.3.1/dist/leaflet-panel-layers.min.js"></script>
-  <!-- Main Script -->
-  <script src="script.js"></script>
+<!-- Remplace l'adresse ci-dessous par l'adresse de ton application web (celle qui se termine par /exec) -->
+<iframe src="https://script.google.com/macros/s/REMPLACE_PAR_TON_ID/exec" allow="fullscreen"></iframe>
 </body>
 </html>
